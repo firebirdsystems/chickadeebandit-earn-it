@@ -1,0 +1,1072 @@
+{
+  "scenarios": [
+    {
+      "name": "self-logged points and verifier choice are private, even between adults",
+      "members": {
+        "ana": "adult",
+        "ben": "adult"
+      },
+      "steps": [
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "INSERT INTO app_earn_it__entries (id, member_id, points, note, created_at) VALUES ('e1', ?, 5, 'Ran 5k', '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ben}}"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT member_id FROM app_earn_it__entries WHERE id = 'e1'",
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "member_id": "scn-ana"
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "ben",
+          "sql": "SELECT id FROM app_earn_it__entries",
+          "expect": {
+            "status": 200,
+            "rowCount": 0
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "INSERT INTO app_earn_it__prefs (member_id, verifier_mode, verifier_id, updated_at) VALUES (?, 'person', ?, '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}",
+            "{{ben}}"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "ben",
+          "sql": "SELECT member_id FROM app_earn_it__prefs",
+          "expect": {
+            "status": 200,
+            "rowCount": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "a direct claim is seen by its two parties only, and only the verifier can decide it",
+      "members": {
+        "ana": "adult",
+        "ben": "adult",
+        "cy": "adult"
+      },
+      "steps": [
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "INSERT INTO app_earn_it__direct_claims (id, member_id, verifier_id, note, points_requested, created_at) VALUES ('c1', ?, ?, 'Gym three times', 10, '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}",
+            "{{ben}}"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "cy",
+          "sql": "SELECT id FROM app_earn_it__direct_claims",
+          "expect": {
+            "status": 200,
+            "rowCount": 0
+          }
+        },
+        {
+          "action": "db",
+          "as": "ben",
+          "sql": "SELECT status FROM app_earn_it__direct_claims WHERE id = 'c1'",
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "status": "pending"
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "UPDATE app_earn_it__direct_claims SET status = 'approved', points_granted = 999 WHERE id = 'c1'"
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT status, points_granted FROM app_earn_it__direct_claims WHERE id = 'c1'",
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "status": "pending",
+                "points_granted": null
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "UPDATE app_earn_it__direct_claims SET points_requested = 999 WHERE id = 'c1'",
+          "expect": {
+            "status": 403
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "UPDATE app_earn_it__direct_claims SET verifier_id = ? WHERE id = 'c1'",
+          "params": [
+            "{{cy}}"
+          ],
+          "expect": {
+            "status": 403
+          }
+        },
+        {
+          "action": "db",
+          "as": "ben",
+          "sql": "UPDATE app_earn_it__direct_claims SET status = 'approved', points_granted = 8, decided_at = '2026-01-02T00:00:00Z' WHERE id = 'c1'",
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT status, points_granted FROM app_earn_it__direct_claims WHERE id = 'c1'",
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "status": "approved",
+                "points_granted": 8
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "a decided direct claim is frozen for both parties: writes land on nothing",
+      "members": {
+        "ana": "adult",
+        "ben": "adult"
+      },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_earn_it__direct_claims (id, member_id, verifier_id, note, points_requested, status, points_granted, decided_at, created_at) VALUES ('c1', ?, ?, 'Gym', 10, 'approved', 8, '2026-01-02T00:00:00Z', '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}",
+            "{{ben}}"
+          ]
+        },
+        {
+          "action": "db",
+          "as": "ben",
+          "sql": "UPDATE app_earn_it__direct_claims SET points_granted = 0 WHERE id = 'c1'"
+        },
+        {
+          "action": "db",
+          "as": "ben",
+          "sql": "DELETE FROM app_earn_it__direct_claims WHERE id = 'c1'"
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "DELETE FROM app_earn_it__direct_claims WHERE id = 'c1'"
+        },
+        {
+          "action": "db",
+          "as": "ben",
+          "sql": "UPDATE app_earn_it__direct_claims SET status = 'denied' WHERE id = 'c1'"
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT status, points_granted FROM app_earn_it__direct_claims WHERE id = 'c1'",
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "status": "approved",
+                "points_granted": 8
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "a member cannot file a pre-approved direct claim, and a self-named verifier stays on the record",
+      "members": {
+        "ana": "adult",
+        "ben": "adult"
+      },
+      "steps": [
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "INSERT INTO app_earn_it__direct_claims (id, member_id, verifier_id, note, points_requested, status, points_granted, created_at) VALUES ('c1', ?, ?, 'Gym', 10, 'approved', 10, '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}",
+            "{{ben}}"
+          ],
+          "expect": {
+            "status": 403
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "INSERT INTO app_earn_it__direct_claims (id, member_id, verifier_id, note, points_requested, created_at) VALUES ('c2', ?, ?, 'Gym', 10, '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}",
+            "{{ana}}"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "UPDATE app_earn_it__direct_claims SET verifier_id = ? WHERE id = 'c2'",
+          "params": [
+            "{{ben}}"
+          ],
+          "expect": {
+            "status": 403
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT member_id, verifier_id FROM app_earn_it__direct_claims WHERE id = 'c2'",
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "member_id": "scn-ana",
+                "verifier_id": "scn-ana"
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "ben",
+          "sql": "SELECT id FROM app_earn_it__direct_claims",
+          "expect": {
+            "status": 200,
+            "rowCount": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "an open claim is visible to everyone, takes one decision, and records who made it",
+      "members": {
+        "ana": "adult",
+        "ben": "adult",
+        "cy": "adult"
+      },
+      "steps": [
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "INSERT INTO app_earn_it__open_claims (id, member_id, note, points_requested, visibility, created_at) VALUES ('o1', ?, 'Read a book', 5, 'everyone', '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "cy",
+          "sql": "SELECT id FROM app_earn_it__open_claims WHERE id = 'o1'",
+          "expect": {
+            "status": 200,
+            "rowCount": 1
+          }
+        },
+        {
+          "action": "db",
+          "as": "cy",
+          "sql": "UPDATE app_earn_it__open_claims SET points_requested = 500 WHERE id = 'o1'",
+          "expect": {
+            "status": 403
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "UPDATE app_earn_it__open_claims SET points_requested = 500 WHERE id = 'o1'",
+          "expect": {
+            "status": 403
+          }
+        },
+        {
+          "action": "db",
+          "as": "ben",
+          "sql": "INSERT INTO app_earn_it__open_decisions (id, claim_id, member_id, decided_by, status, points_granted, decided_at) VALUES ('d1', 'o1', ?, ?, 'approved', 5, '2026-01-02T00:00:00Z')",
+          "params": [
+            "{{ana}}",
+            "{{cy}}"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT decided_by, status, points_granted FROM app_earn_it__open_decisions WHERE claim_id = 'o1'",
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "decided_by": "scn-ben",
+                "status": "approved",
+                "points_granted": 5
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "cy",
+          "sql": "INSERT INTO app_earn_it__open_decisions (id, claim_id, member_id, decided_by, status, points_granted, decided_at) VALUES ('d2', 'o1', ?, ?, 'denied', 0, '2026-01-03T00:00:00Z')",
+          "params": [
+            "{{ana}}",
+            "{{cy}}"
+          ]
+        },
+        {
+          "action": "db",
+          "as": "ben",
+          "sql": "UPDATE app_earn_it__open_decisions SET points_granted = 500 WHERE id = 'd1'",
+          "expect": {
+            "status": 403
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT decided_by, points_granted FROM app_earn_it__open_decisions WHERE claim_id = 'o1'",
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "decided_by": "scn-ben",
+                "points_granted": 5
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "a claimant deciding their own open claim is stamped as themselves",
+      "members": {
+        "ana": "adult",
+        "ben": "adult"
+      },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_earn_it__open_claims (id, member_id, note, points_requested, visibility, created_at) VALUES ('o1', ?, 'Read a book', 5, 'everyone', '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}"
+          ]
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "INSERT INTO app_earn_it__open_decisions (id, claim_id, member_id, decided_by, status, points_granted, decided_at) VALUES ('d1', 'o1', ?, ?, 'approved', 500, '2026-01-02T00:00:00Z')",
+          "params": [
+            "{{ana}}",
+            "{{ben}}"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "ben",
+          "sql": "SELECT decided_by FROM app_earn_it__open_decisions WHERE id = 'd1'",
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "decided_by": "scn-ana"
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "UPDATE app_earn_it__open_decisions SET decided_by = ? WHERE id = 'd1'",
+          "params": [
+            "{{ben}}"
+          ],
+          "expect": {
+            "status": 403
+          }
+        }
+      ]
+    },
+    {
+      "name": "a goal is private unless shared, and only its owner can put points toward it",
+      "members": {
+        "ana": "adult",
+        "ben": "adult"
+      },
+      "steps": [
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "INSERT INTO app_earn_it__goals (id, member_id, name, cost_points, visibility, created_at) VALUES ('g1', ?, 'New guitar', 100, 'private', '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "INSERT INTO app_earn_it__goals (id, member_id, name, cost_points, visibility, created_at) VALUES ('g2', ?, 'Weekend away', 200, 'everyone', '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "ben",
+          "sql": "SELECT id FROM app_earn_it__goals",
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "id": "g2"
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "INSERT INTO app_earn_it__allocations (id, goal_id, member_id, points, created_at) VALUES ('a1', 'g2', ?, 20, '2026-01-02T00:00:00Z')",
+          "params": [
+            "{{ana}}"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "ben",
+          "sql": "INSERT INTO app_earn_it__allocations (id, goal_id, member_id, points, created_at) VALUES ('a2', 'g2', ?, 20, '2026-01-02T00:00:00Z')",
+          "params": [
+            "{{ben}}"
+          ],
+          "expect": {
+            "status": 403
+          }
+        },
+        {
+          "action": "db",
+          "as": "ben",
+          "sql": "UPDATE app_earn_it__goals SET cost_points = 1 WHERE id = 'g2'"
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT cost_points FROM app_earn_it__goals WHERE id = 'g2'",
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "cost_points": 200
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "DELETE FROM app_earn_it__goals WHERE id = 'g2'",
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT id FROM app_earn_it__allocations",
+          "expect": {
+            "status": 200,
+            "rowCount": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "automation awards are read by their owner only and cannot be written from the app",
+      "members": {
+        "ana": "adult",
+        "ben": "adult"
+      },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_earn_it__auto_awards (id, member_id, points, note, source_event_id, awarded_at) VALUES ('w1', ?, 7, 'Streak milestone', 'evt-1', '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}"
+          ]
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT points FROM app_earn_it__auto_awards",
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "points": 7
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "ben",
+          "sql": "SELECT points FROM app_earn_it__auto_awards",
+          "expect": {
+            "status": 200,
+            "rowCount": 0
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "INSERT INTO app_earn_it__auto_awards (id, member_id, points, note, awarded_at) VALUES ('w2', ?, 1000, 'Mine', '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}"
+          ],
+          "expect": {
+            "status": 403
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "UPDATE app_earn_it__auto_awards SET points = 1000 WHERE id = 'w1'",
+          "expect": {
+            "status": 403
+          }
+        }
+      ]
+    },
+    {
+      "name": "in a shared space the steward sees no more than anyone else",
+      "context": "shared_space",
+      "members": {
+        "steward": "admin",
+        "ana": "adult",
+        "ben": "adult"
+      },
+      "steps": [
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "INSERT INTO app_earn_it__entries (id, member_id, points, note, created_at) VALUES ('e1', ?, 5, 'Ran 5k', '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "INSERT INTO app_earn_it__direct_claims (id, member_id, verifier_id, note, points_requested, created_at) VALUES ('c1', ?, ?, 'Gym', 10, '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}",
+            "{{ben}}"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "INSERT INTO app_earn_it__goals (id, member_id, name, cost_points, visibility, created_at) VALUES ('g1', ?, 'New guitar', 100, 'private', '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "steward",
+          "sql": "SELECT id FROM app_earn_it__entries",
+          "expect": {
+            "status": 200,
+            "rowCount": 0
+          }
+        },
+        {
+          "action": "db",
+          "as": "steward",
+          "sql": "SELECT id FROM app_earn_it__direct_claims",
+          "expect": {
+            "status": 200,
+            "rowCount": 0
+          }
+        },
+        {
+          "action": "db",
+          "as": "steward",
+          "sql": "SELECT id FROM app_earn_it__goals",
+          "expect": {
+            "status": 200,
+            "rowCount": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "the app's own reads and writes run under the row policies and add up",
+      "members": {
+        "ana": "adult",
+        "ben": "adult",
+        "cy": "adult"
+      },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_earn_it__prefs (member_id, verifier_mode, verifier_id, updated_at) VALUES (?, 'person', ?, '2026-01-01T00:00:00Z'), (?, 'none', NULL, '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}",
+            "{{ben}}",
+            "{{ben}}"
+          ]
+        },
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_earn_it__entries (id, member_id, points, note, created_at) VALUES ('e1', ?, 5, 'Run', '2026-01-01T00:00:00Z'), ('e2', ?, 3, 'Cooked', '2026-01-01T00:00:00Z'), ('e3', ?, 4, 'Inbox', '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}",
+            "{{ana}}",
+            "{{ben}}"
+          ]
+        },
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_earn_it__direct_claims (id, member_id, verifier_id, note, points_requested, status, points_granted, created_at) VALUES ('c1', ?, ?, 'Gym', 15, 'approved', 15, '2026-01-01T00:00:00Z'), ('c2', ?, ?, 'Taxes', 20, 'pending', NULL, '2026-01-01T00:00:00Z'), ('c3', ?, ?, 'No phone', 9, 'approved', 9, '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}",
+            "{{ben}}",
+            "{{ana}}",
+            "{{ben}}",
+            "{{ben}}",
+            "{{ana}}"
+          ]
+        },
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_earn_it__direct_claims (id, member_id, verifier_id, note, points_requested, created_at) VALUES ('c9', ?, ?, 'Between two others', 50, '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ben}}",
+            "{{cy}}"
+          ]
+        },
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_earn_it__open_claims (id, member_id, note, points_requested, visibility, created_at) VALUES ('o1', ?, 'Book', 10, 'everyone', '2026-01-01T00:00:00Z'), ('o2', ?, 'Garage', 6, 'everyone', '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}",
+            "{{cy}}"
+          ]
+        },
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_earn_it__open_decisions (id, claim_id, member_id, decided_by, status, points_granted, decided_at) VALUES ('d1', 'o1', ?, ?, 'approved', 10, '2026-01-01T00:00:00Z'), ('d2', 'o2', ?, ?, 'approved', 6, '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}",
+            "{{cy}}",
+            "{{cy}}",
+            "{{ben}}"
+          ]
+        },
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_earn_it__goals (id, member_id, name, cost_points, visibility, created_at) VALUES ('g1', ?, 'Shoes', 60, 'private', '2026-01-01T00:00:00Z'), ('g2', ?, 'Weekend', 200, 'everyone', '2026-01-01T00:00:00Z'), ('g3', ?, 'Secret', 30, 'private', '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}",
+            "{{ben}}",
+            "{{ben}}"
+          ]
+        },
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_earn_it__allocations (id, goal_id, member_id, points, created_at) VALUES ('a1', 'g1', ?, 12, '2026-01-01T00:00:00Z'), ('a2', 'g2', ?, 45, '2026-01-01T00:00:00Z'), ('a3', 'g3', ?, 30, '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}",
+            "{{ben}}",
+            "{{ben}}"
+          ]
+        },
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_earn_it__auto_awards (id, member_id, points, note, source_event_id, awarded_at) VALUES ('w1', ?, 7, 'Streak', 'evt-1', '2026-01-01T00:00:00Z'), ('w2', ?, 2, 'Task', 'evt-2', '2026-01-01T00:00:00Z')",
+          "params": [
+            "{{ana}}",
+            "{{ben}}"
+          ]
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT * FROM app_earn_it__prefs LIMIT 1",
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "member_id": "scn-ana",
+                "verifier_mode": "person",
+                "verifier_id": "scn-ben"
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT * FROM app_earn_it__entries ORDER BY created_at DESC, id DESC LIMIT 200",
+          "expect": {
+            "status": 200,
+            "rowCount": 2
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT COALESCE(SUM(points), 0) AS total FROM app_earn_it__entries",
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "total": 8
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT * FROM app_earn_it__direct_claims ORDER BY created_at DESC, id DESC LIMIT 300",
+          "expect": {
+            "status": 200,
+            "rowCount": 3
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT COALESCE(SUM(points_granted), 0) AS total FROM app_earn_it__direct_claims WHERE member_id = ? AND status = 'approved'",
+          "params": [
+            "{{ana}}"
+          ],
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "total": 15
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT * FROM app_earn_it__open_claims ORDER BY created_at DESC, id DESC LIMIT 300",
+          "expect": {
+            "status": 200,
+            "rowCount": 2
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT * FROM app_earn_it__open_decisions ORDER BY decided_at DESC, id DESC LIMIT 600",
+          "expect": {
+            "status": 200,
+            "rowCount": 2
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT COALESCE(SUM(points_granted), 0) AS total FROM app_earn_it__open_decisions WHERE member_id = ? AND status = 'approved'",
+          "params": [
+            "{{ana}}"
+          ],
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "total": 10
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT * FROM app_earn_it__goals ORDER BY created_at DESC, id DESC LIMIT 200",
+          "expect": {
+            "status": 200,
+            "rowCount": 2
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT goal_id, SUM(points) AS points FROM app_earn_it__allocations GROUP BY goal_id",
+          "expect": {
+            "status": 200,
+            "rowCount": 2,
+            "rowsContain": [
+              {
+                "goal_id": "g1",
+                "points": 12
+              },
+              {
+                "goal_id": "g2",
+                "points": 45
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT COALESCE(SUM(points), 0) AS total FROM app_earn_it__allocations WHERE member_id = ?",
+          "params": [
+            "{{ana}}"
+          ],
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "total": 12
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT * FROM app_earn_it__auto_awards ORDER BY awarded_at DESC, id DESC LIMIT 100",
+          "expect": {
+            "status": 200,
+            "rowCount": 1
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT COALESCE(SUM(points), 0) AS total FROM app_earn_it__auto_awards",
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "total": 7
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "ben",
+          "sql": "UPDATE app_earn_it__direct_claims SET status = ?, points_granted = ?, decided_at = ? WHERE id = ? AND status = 'pending'",
+          "params": [
+            "approved",
+            18,
+            "2026-01-02T00:00:00Z",
+            "c2"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT COALESCE(SUM(points_granted), 0) AS total FROM app_earn_it__direct_claims WHERE member_id = ? AND status = 'approved'",
+          "params": [
+            "{{ana}}"
+          ],
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "total": 33
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "UPDATE app_earn_it__prefs SET verifier_mode = ?, verifier_id = ?, updated_at = ? WHERE member_id = ?",
+          "params": [
+            "anyone",
+            null,
+            "2026-01-02T00:00:00Z",
+            "{{ana}}"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT * FROM app_earn_it__prefs LIMIT 1",
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "verifier_mode": "anyone"
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "UPDATE app_earn_it__goals SET attained_at = ? WHERE id = ?",
+          "params": [
+            "2026-01-02T00:00:00Z",
+            "g1"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "DELETE FROM app_earn_it__allocations WHERE goal_id = ?",
+          "params": [
+            "g2"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT goal_id, SUM(points) AS points FROM app_earn_it__allocations GROUP BY goal_id",
+          "expect": {
+            "status": 200,
+            "rowCount": 2,
+            "rowsContain": [
+              {
+                "goal_id": "g2",
+                "points": 45
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "DELETE FROM app_earn_it__allocations WHERE goal_id = ?",
+          "params": [
+            "g1"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "ana",
+          "sql": "SELECT COALESCE(SUM(points), 0) AS total FROM app_earn_it__allocations WHERE member_id = ?",
+          "params": [
+            "{{ana}}"
+          ],
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "total": 0
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

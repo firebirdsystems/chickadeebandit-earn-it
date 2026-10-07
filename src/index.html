@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Earn It</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: var(--hub-bg, #f9fafb);
+      --surface: var(--hub-surface, #ffffff);
+      --border: var(--hub-border, #e5e7eb);
+      --text: var(--hub-text, #111827);
+      --muted: var(--hub-text-muted, #6b7280);
+      --accent: var(--hub-primary, #2563eb);
+      --accent-hover: var(--hub-primary-hover, #1d4ed8);
+      --accent-fg: var(--hub-primary-fg, #ffffff);
+      --radius: var(--hub-radius, 10px);
+      --red: var(--hub-tint-danger-fg, #b91c1c);
+      --red-soft: var(--hub-tint-danger, #fee2e2);
+      --green: #16a34a;
+      --green-soft: var(--hub-tint-success, #dcfce7);
+      --amber: var(--hub-tint-warning-fg, #d97706);
+      --amber-soft: var(--hub-tint-warning, #fef3c7);
+    }
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--hub-font, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+      font-size: var(--hub-font-size, 15px);
+      line-height: 1.45;
+    }
+    .app { max-width: 680px; margin: 0 auto; padding: 16px 16px 56px; }
+    .loading { color: var(--muted); text-align: center; padding: 40px 16px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    h1 { font-size: 1.35rem; line-height: 1.2; }
+    h2 { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 800; }
+    .section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 22px 0 8px; min-height: 32px; }
+    .muted { color: var(--muted); }
+    .tiny { font-size: .8rem; }
+    .stack { display: grid; gap: 10px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+    .error { background: var(--red-soft); color: var(--red); padding: 9px 12px; border-radius: 8px; margin-bottom: 10px; font-size: .88rem; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      border: 1px solid transparent; border-radius: 8px; padding: 8px 14px;
+      font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer;
+      min-height: 40px; background: var(--accent); color: var(--accent-fg);
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:disabled { opacity: .5; cursor: default; }
+    .btn-ghost { background: transparent; color: var(--text); border-color: var(--border); }
+    .btn-ghost:hover { background: var(--bg); }
+    .btn-sm { min-height: 32px; padding: 4px 10px; font-size: .8rem; }
+    .btn-danger { background: transparent; color: var(--red); border-color: var(--border); }
+    .btn-danger:hover { background: var(--red-soft); }
+    .btn-link { background: none; border: 0; color: var(--muted); font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; padding: 4px 6px; min-height: 32px; }
+    .btn-link:hover { color: var(--text); }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+    .demo-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: var(--amber-soft); border-radius: 8px; padding: 8px 12px; margin-bottom: 14px; font-size: .8rem; color: var(--hub-tint-warning-fg, #78350f); }
+    .demo-bar button { font: inherit; padding: 3px 10px; border-radius: 6px; border: 1px solid #fcd34d; background: var(--surface); color: #78350f; cursor: pointer; }
+    .demo-bar button.on { background: #fde68a; font-weight: 700; }
+
+    /* Balance */
+    .balance { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .balance-number { font-size: 2.4rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+    .balance-label { font-size: .8rem; color: var(--muted); font-weight: 700; margin-top: 4px; }
+    .balance-parts { text-align: right; }
+
+    /* Rows */
+    .row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border); }
+    .row:first-child { border-top: 0; padding-top: 0; }
+    .row:last-child { padding-bottom: 0; }
+    .row-body { flex: 1; min-width: 0; }
+    .row-title { font-weight: 700; overflow-wrap: anywhere; }
+    .row-points { font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .row-points.off { color: var(--muted); font-weight: 700; }
+    .row-points.no { color: var(--muted); font-weight: 700; text-decoration: line-through; }
+    .badge { display: inline-block; font-size: .7rem; font-weight: 800; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+    .badge.ok { background: var(--green-soft); color: var(--green); }
+    .badge.wait { background: var(--amber-soft); color: var(--amber); }
+    .badge.no { background: var(--red-soft); color: var(--red); }
+    .badge.plain { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+    .empty { color: var(--muted); text-align: center; padding: 26px 16px; }
+    .empty-icon { font-size: 2.4rem; margin-bottom: 8px; }
+
+    /* Goals */
+    .goal-head { display: flex; align-items: flex-start; gap: 10px; }
+    .goal-body { flex: 1; min-width: 0; }
+    .goal-name { font-weight: 800; font-size: 1.02rem; overflow-wrap: anywhere; }
+    .goal-note { overflow-wrap: anywhere; }
+    .track { height: 10px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); overflow: hidden; margin: 12px 0 8px; }
+    .fill { height: 100%; background: var(--accent); border-radius: 6px; }
+    .fill.done { background: var(--green); }
+    .goal-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .reached { color: var(--green); font-weight: 800; }
+
+    .search-row { margin-bottom: 10px; }
+    .search-input { width: 100%; border: 1.5px solid var(--border); border-radius: 8px; padding: 9px 11px; font: inherit; background: var(--surface); color: var(--text); }
+    .search-input:focus { outline: none; border-color: var(--accent); }
+
+    /* Modal */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, .4); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+    .modal { background: var(--surface); border-radius: var(--radius); padding: 22px; width: 100%; max-width: 440px; max-height: 90vh; overflow-y: auto; }
+    .modal-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 16px; overflow-wrap: anywhere; }
+    .field { display: grid; gap: 4px; margin-bottom: 14px; }
+    label, .label { font-size: .76rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 800; }
+    input[type=text], input[type=number], select, textarea {
+      width: 100%; border: 1.5px solid var(--border); border-radius: 8px;
+      padding: 9px 11px; font: inherit; background: var(--surface); color: var(--text);
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+    textarea { min-height: 60px; resize: vertical; }
+    .check { display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-size: .9rem; font-weight: 400; color: var(--text); cursor: pointer; }
+    .check input { width: 18px; height: 18px; }
+    .quick { display: flex; flex-wrap: wrap; gap: 6px; }
+    .quick button { font: inherit; font-size: .85rem; font-weight: 700; padding: 6px 12px; border-radius: 18px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; min-height: 34px; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; flex-wrap: wrap; }
+    .modal-actions .spacer { flex: 1; }
+  </style>
+  <base href="/run/earn-it/">
+</head>
+<body>
+<div id="root" class="app"><div class="loading">Loading…</div></div>
+
+<script type="module">
+import {
+  esc, hubConfirm, searchMatch, formatRelativeDate,
+  createDbHelper, sendHubNotification, hubAppUrl,
+} from "/hub-sdk.js";
+import {
+  MAX_POINTS, MODE_NONE, MODE_PERSON, MODE_ANYONE,
+  clampPoints, formatPoints, balance,
+  verifierChoices, normalizePrefs, choiceValue, parseChoice,
+  decisionsByClaim, canDecideDirect, canDecideOpen, canWithdraw,
+  activityFeed, pendingPoints, itemStatus, toVerify,
+  goalView, maxAllocation, sortGoals, searchableFields,
+} from "./logic.js";
+import { firstRenderBatch, namedResults } from "./reads.js";
+
+// --- Hub runtime globals (empty in demo mode) --------------------------------
+const CONTEXT = window.__CONTEXT_URL ?? "";
+const DB_URL = window.__DB_URL ?? "";
+const APP_ID = window.__APP_ID ?? "earn-it";
+const HUB_MEMBER = window.__CURRENT_MEMBER ?? null;
+const DEMO = !DB_URL;
+
+const db = createDbHelper(DB_URL);
+
+// --- App state ---------------------------------------------------------------
+let members = [];
+let appMembers = null;    // who can open this app; null when the hub did not say
+let memberMap = new Map();
+let demoMe = null;
+let prefsRow = null;
+let entries = [];
+let directClaims = [];
+let openClaims = [];
+let openDecisions = [];
+let goals = [];
+let goalProgress = new Map();   // goal id -> points put toward it
+let autoAwards = [];
+let totals = { self: 0, direct: 0, open: 0, auto: 0, spent: 0 };
+let searchQ = "";
+let error = "";
+let modalEl = null;
+let ready = false;
+
+const me = () => demoMe ?? HUB_MEMBER;
+const nowIso = () => new Date().toISOString();
+// A form control by name. Always through form.elements: "name" and "title" are
+// also properties of the form element itself.
+const field = (form, name) => form.elements.namedItem(name);
+const memberName = (id) => memberMap.get(id)?.name ?? "Someone";
+const choices = () => verifierChoices(me()?.id, members, appMembers);
+const prefs = () => normalizePrefs(prefsRow, choices());
+const feed = () => activityFeed({ meId: me()?.id, entries, directClaims, openClaims, decisions: openDecisions, autoAwards });
+const myGoals = () => sortGoals(goals.filter(g => g.member_id === me()?.id), goalProgress);
+const goalById = (id) => goals.find(g => g.id === id) ?? null;
+const viewOf = (goal) => goalView(goal, goalProgress.get(goal.id));
+
+// --- Loading -----------------------------------------------------------------
+async function loadMembers() {
+  if (!CONTEXT) {
+    members = [
+      { id: "demo-alex", name: "Alex", role: "adult" },
+      { id: "demo-jordan", name: "Jordan", role: "adult" },
+      { id: "demo-sam", name: "Sam", role: "adult" },
+    ];
+    appMembers = null;
+  } else {
+    try {
+      const res = await fetch(`${CONTEXT}?keys=family.members,family.app_members`);
+      const json = await res.json();
+      members = json["family.members"] ?? [];
+      appMembers = json["family.app_members"] ?? null;
+    } catch { members = []; appMembers = null; }
+  }
+  memberMap = new Map(members.map(m => [m.id, m]));
+  if (!HUB_MEMBER && !demoMe) demoMe = members[0] ?? null;
+}
+
+// The demo holds everyone's rows at once; a real read returns only what the
+// row policies let the viewer see. scopeDemo() applies the same rules, so the
+// preview shows each person what the hub would.
+const DEMO_STORE = {};
+function demoData() {
+  const ago = (hours) => new Date(Date.now() - hours * 3600000).toISOString();
+  Object.assign(DEMO_STORE, {
+    prefs: [{ member_id: "demo-alex", verifier_mode: MODE_PERSON, verifier_id: "demo-jordan", updated_at: ago(200) }],
+    entries: [
+      { id: "demo-e1", member_id: "demo-alex", points: 5, note: "Morning run", created_at: ago(30) },
+      { id: "demo-e2", member_id: "demo-alex", points: 3, note: "Cooked instead of ordering in", created_at: ago(80) },
+      { id: "demo-e3", member_id: "demo-jordan", points: 4, note: "Inbox to zero", created_at: ago(20) },
+      { id: "demo-e4", member_id: "demo-jordan", points: 60, note: "Three months of Spanish lessons", created_at: ago(150) },
+    ],
+    directClaims: [
+      { id: "demo-c1", member_id: "demo-alex", verifier_id: "demo-jordan", note: "Gym three times this week", points_requested: 15, status: "approved", points_granted: 15, decided_at: ago(40), created_at: ago(50) },
+      { id: "demo-c2", member_id: "demo-alex", verifier_id: "demo-jordan", note: "Finished the tax paperwork", points_requested: 20, status: "pending", points_granted: null, decided_at: null, created_at: ago(3) },
+      { id: "demo-c3", member_id: "demo-jordan", verifier_id: "demo-alex", note: "No phone after 9pm, all week", points_requested: 10, status: "pending", points_granted: null, decided_at: null, created_at: ago(5) },
+    ],
+    openClaims: [
+      { id: "demo-o1", member_id: "demo-sam", note: "Cleared out the garage", points_requested: 25, visibility: "everyone", created_at: ago(8) },
+      { id: "demo-o2", member_id: "demo-alex", note: "Read a whole book", points_requested: 10, visibility: "everyone", created_at: ago(120) },
+    ],
+    openDecisions: [
+      { id: "demo-d1", claim_id: "demo-o2", member_id: "demo-alex", decided_by: "demo-sam", status: "approved", points_granted: 10, decided_at: ago(100) },
+    ],
+    goals: [
+      { id: "demo-g1", member_id: "demo-alex", name: "New running shoes", note: "The grey ones", cost_points: 60, visibility: "private", attained_at: null, created_at: ago(300) },
+      { id: "demo-g2", member_id: "demo-alex", name: "A day off, no chores", note: "", cost_points: 20, visibility: "everyone", attained_at: ago(60), created_at: ago(400) },
+      { id: "demo-g3", member_id: "demo-jordan", name: "Weekend away", note: "", cost_points: 200, visibility: "everyone", attained_at: null, created_at: ago(500) },
+    ],
+    allocations: [
+      { id: "demo-a1", goal_id: "demo-g1", member_id: "demo-alex", points: 12, created_at: ago(70) },
+      { id: "demo-a2", goal_id: "demo-g2", member_id: "demo-alex", points: 20, created_at: ago(60) },
+      { id: "demo-a3", goal_id: "demo-g3", member_id: "demo-jordan", points: 45, created_at: ago(90) },
+    ],
+    autoAwards: [
+      { id: "demo-w1", member_id: "demo-alex", points: 7, note: "7-day streak: Stretching", awarded_at: ago(26) },
+    ],
+  });
+}
+
+function scopeDemo() {
+  const id = me()?.id;
+  const sum = (rows, key = "points") => rows.reduce((n, r) => n + (Number(r[key]) || 0), 0);
+  const s = DEMO_STORE;
+  prefsRow = s.prefs.find(p => p.member_id === id) ?? null;
+  entries = s.entries.filter(e => e.member_id === id);
+  directClaims = s.directClaims.filter(c => c.member_id === id || c.verifier_id === id);
+  openClaims = [...s.openClaims];
+  openDecisions = [...s.openDecisions];
+  goals = s.goals.filter(g => g.member_id === id || g.visibility === "everyone");
+  const visible = new Set(goals.map(g => g.id));
+  goalProgress = new Map();
+  for (const a of s.allocations) {
+    if (visible.has(a.goal_id)) goalProgress.set(a.goal_id, (goalProgress.get(a.goal_id) ?? 0) + a.points);
+  }
+  autoAwards = s.autoAwards.filter(a => a.member_id === id);
+  totals = {
+    self: sum(entries),
+    direct: sum(s.directClaims.filter(c => c.member_id === id && c.status === "approved"), "points_granted"),
+    open: sum(s.openDecisions.filter(d => d.member_id === id && d.status === "approved"), "points_granted"),
+    auto: sum(autoAwards),
+    spent: sum(s.allocations.filter(a => a.member_id === id)),
+  };
+}
+
+async function loadData() {
+  if (DEMO) {
+    if (!DEMO_STORE.entries) demoData();
+    scopeDemo();
+    return;
+  }
+  const id = me()?.id;
+  if (!id) return;
+  const r = namedResults(await db.batch(firstRenderBatch(id)));
+  const total = (rows) => Number(rows[0]?.total) || 0;
+  prefsRow = r.prefs[0] ?? null;
+  entries = r.entries;
+  directClaims = r.directClaims;
+  openClaims = r.openClaims;
+  openDecisions = r.openDecisions;
+  goals = r.goals;
+  goalProgress = new Map(r.goalProgress.map(row => [row.goal_id, Number(row.points) || 0]));
+  autoAwards = r.autoAwards;
+  totals = {
+    self: total(r.entriesTotal), direct: total(r.directTotal), open: total(r.openTotal),
+    auto: total(r.autoTotal), spent: total(r.spentTotal),
+  };
+}
+
+async function refresh() {
+  try {
+    await loadMembers();
+    await loadData();
+    error = "";
+  } catch (e) {
+    error = e.message;
+  }
+  ready = true;
+  render();
+}
+
+/** Run a write; on failure show the reason and re-read, so the screen never
+ *  keeps an optimistic change the hub refused. */
+async function attempt(fn, conflictMessage) {
+  try {
+    error = "";
+    await fn();
+    return true;
+  } catch (e) {
+    try { await loadData(); } catch { /* keep what we have */ }
+    // A lost race (someone decided or withdrew first) is refused by a UNIQUE
+    // index or an unmet requireChanges; anything else keeps the hub's own words.
+    const lostRace = conflictMessage && /unique|constraint|stale state/i.test(String(e.message));
+    error = (lostRace ? conflictMessage : e.message) || "Something went wrong.";
+    closeModal();
+    render();
+    return false;
+  }
+}
+
+// In the demo there is no hub to write to, so the same change lands in the
+// demo store and the screen is re-read from it, exactly as a real write is
+// followed by local state that matches what the hub now holds.
+function demoWrite(fn) {
+  if (!DEMO) return;
+  fn(DEMO_STORE);
+  scopeDemo();
+}
+
+// --- Side effects (best-effort, never block the write) ------------------------
+function notify(args) {
+  if (DEMO) return;
+  sendHubNotification({ url: hubAppUrl(APP_ID), ...args }).catch(() => {});
+}
+
+// --- Writes ------------------------------------------------------------------
+async function rememberChoice(choice) {
+  const who = me();
+  const current = prefs();
+  if (current.mode === choice.mode && current.verifierId === choice.verifierId) return;
+  const row = { member_id: who.id, verifier_mode: choice.mode, verifier_id: choice.verifierId || null, updated_at: nowIso() };
+  try {
+    if (prefsRow) {
+      await db("UPDATE app_earn_it__prefs SET verifier_mode = ?, verifier_id = ?, updated_at = ? WHERE member_id = ?", [row.verifier_mode, row.verifier_id, row.updated_at, who.id]);
+    } else {
+      await db("INSERT INTO app_earn_it__prefs (member_id, verifier_mode, verifier_id, updated_at) VALUES (?, ?, ?, ?)", [row.member_id, row.verifier_mode, row.verifier_id, row.updated_at]);
+    }
+    prefsRow = row;
+    demoWrite(s => { s.prefs = [...s.prefs.filter(p => p.member_id !== who.id), row]; });
+  } catch { /* the default is a convenience; the points were already saved */ }
+}
+
+async function earn({ note, points, choice }) {
+  const who = me();
+  if (!who) return false;
+  const id = crypto.randomUUID();
+  const stamp = nowIso();
+  const ok = await attempt(async () => {
+    if (choice.mode === MODE_PERSON) {
+      // status is left to its default: only the verifier may write it.
+      const row = { id, member_id: who.id, verifier_id: choice.verifierId, note, points_requested: points, status: "pending", points_granted: null, decided_at: null, created_at: stamp };
+      await db("INSERT INTO app_earn_it__direct_claims (id, member_id, verifier_id, note, points_requested, created_at) VALUES (?, ?, ?, ?, ?, ?)", [id, who.id, choice.verifierId, note, points, stamp]);
+      directClaims = [row, ...directClaims];
+      demoWrite(s => { s.directClaims = [row, ...s.directClaims]; });
+    } else if (choice.mode === MODE_ANYONE) {
+      const row = { id, member_id: who.id, note, points_requested: points, visibility: "everyone", created_at: stamp };
+      await db("INSERT INTO app_earn_it__open_claims (id, member_id, note, points_requested, visibility, created_at) VALUES (?, ?, ?, ?, 'everyone', ?)", [id, who.id, note, points, stamp]);
+      openClaims = [row, ...openClaims];
+      demoWrite(s => { s.openClaims = [row, ...s.openClaims]; });
+    } else {
+      const row = { id, member_id: who.id, points, note, created_at: stamp };
+      await db("INSERT INTO app_earn_it__entries (id, member_id, points, note, created_at) VALUES (?, ?, ?, ?, ?)", [id, who.id, points, note, stamp]);
+      entries = [row, ...entries];
+      totals = { ...totals, self: totals.self + points };
+      demoWrite(s => { s.entries = [row, ...s.entries]; });
+    }
+    closeModal();
+    render();
+  });
+  if (!ok) return false;
+  const ask = `${who.name} asks for ${formatPoints(points)}: ${note}`;
+  if (choice.mode === MODE_PERSON) notify({ title: "Points to verify", body: ask, audience: [choice.verifierId] });
+  if (choice.mode === MODE_ANYONE) {
+    const audience = choices().map(m => m.id);
+    if (audience.length) notify({ title: "Points to verify", body: ask, audience });
+  }
+  await rememberChoice(choice);
+  return true;
+}
+
+async function decide(kind, id, approve, points) {
+  const who = me();
+  const stamp = nowIso();
+  const status = approve ? "approved" : "denied";
+  const granted = approve ? points : 0;
+  let claimant = "";
+  const ok = await attempt(async () => {
+    if (kind === "direct") {
+      const claim = directClaims.find(c => c.id === id);
+      if (!canDecideDirect(who?.id, claim)) return;
+      claimant = claim.member_id;
+      // requireChanges: a claim withdrawn a moment ago must not read as decided.
+      await db.batch([{
+        sql: "UPDATE app_earn_it__direct_claims SET status = ?, points_granted = ?, decided_at = ? WHERE id = ? AND status = 'pending'",
+        params: [status, granted, stamp, id], requireChanges: true,
+      }]);
+      const next = { ...claim, status, points_granted: granted, decided_at: stamp };
+      directClaims = directClaims.map(c => (c.id === id ? next : c));
+      demoWrite(s => { s.directClaims = s.directClaims.map(c => (c.id === id ? next : c)); });
+    } else {
+      const claim = openClaims.find(c => c.id === id);
+      if (!canDecideOpen(who?.id, claim, decisionsByClaim(openDecisions).get(id))) return;
+      claimant = claim.member_id;
+      const row = { id: crypto.randomUUID(), claim_id: id, member_id: claim.member_id, decided_by: who.id, status, points_granted: granted, decided_at: stamp };
+      // UNIQUE (claim_id): if someone else got there first, this is refused.
+      await db("INSERT INTO app_earn_it__open_decisions (id, claim_id, member_id, decided_by, status, points_granted, decided_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [row.id, row.claim_id, row.member_id, row.decided_by, row.status, row.points_granted, row.decided_at]);
+      openDecisions = [row, ...openDecisions];
+      demoWrite(s => { s.openDecisions = [row, ...s.openDecisions]; });
+    }
+    closeModal();
+    render();
+  }, "That claim was already decided or withdrawn.");
+  if (!ok || !claimant) return;
+  notify(approve
+    ? { title: "Points verified ✅", body: `${who.name} approved ${formatPoints(granted)}.`, audience: [claimant] }
+    : { title: "Points not approved", body: `${who.name} did not approve your claim.`, audience: [claimant] });
+}
+
+async function withdraw(kind, id) {
+  const yes = await hubConfirm({ message: "Withdraw this claim?", confirmLabel: "Withdraw", destructive: true });
+  if (!yes) return;
+  await attempt(async () => {
+    if (kind === "direct") {
+      await db.batch([{ sql: "DELETE FROM app_earn_it__direct_claims WHERE id = ? AND status = 'pending'", params: [id], requireChanges: true }]);
+      directClaims = directClaims.filter(c => c.id !== id);
+      demoWrite(s => { s.directClaims = s.directClaims.filter(c => c.id !== id); });
+    } else {
+      await db("DELETE FROM app_earn_it__open_claims WHERE id = ?", [id]);
+      openClaims = openClaims.filter(c => c.id !== id);
+      demoWrite(s => { s.openClaims = s.openClaims.filter(c => c.id !== id); });
+    }
+    render();
+  }, "That claim was already decided.");
+}
+
+async function saveGoal(form) {
+  const who = me();
+  if (!who) return;
+  const id = form.dataset.id || "";
+  const name = field(form, "name").value.trim();
+  if (!name) { field(form, "name").focus(); return; }
+  const cost = clampPoints(field(form, "cost").value);
+  if (!cost) { field(form, "cost").focus(); return; }
+  const note = field(form, "note").value.trim();
+  const visibility = field(form, "shared").checked ? "everyone" : "private";
+  const button = form.querySelector("button[type=submit]");
+  if (button) { button.disabled = true; button.textContent = "Saving…"; }
+  const ok = await attempt(async () => {
+    if (id) {
+      const existing = goalById(id);
+      // Lowering the cost can complete a goal; raising it can reopen one.
+      const reached = goalView({ cost_points: cost }, goalProgress.get(id)).reached;
+      const attainedAt = reached ? (existing?.attained_at || nowIso()) : null;
+      await db("UPDATE app_earn_it__goals SET name = ?, note = ?, cost_points = ?, visibility = ?, attained_at = ? WHERE id = ?", [name, note, cost, visibility, attainedAt, id]);
+      const patch = { name, note, cost_points: cost, visibility, attained_at: attainedAt };
+      goals = goals.map(g => (g.id === id ? { ...g, ...patch } : g));
+      demoWrite(s => { s.goals = s.goals.map(g => (g.id === id ? { ...g, ...patch } : g)); });
+    } else {
+      const row = { id: crypto.randomUUID(), member_id: who.id, name, note, cost_points: cost, visibility, attained_at: null, created_at: nowIso() };
+      await db("INSERT INTO app_earn_it__goals (id, member_id, name, note, cost_points, visibility, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [row.id, row.member_id, row.name, row.note, row.cost_points, row.visibility, row.created_at]);
+      goals = [row, ...goals];
+      demoWrite(s => { s.goals = [row, ...s.goals]; });
+    }
+    closeModal();
+    render();
+  });
+  if (!ok && button) { button.disabled = false; button.textContent = "Save"; }
+}
+
+async function putPoints(goalId, points) {
+  const who = me();
+  const goal = goalById(goalId);
+  if (!who || !goal || goal.member_id !== who.id) return;
+  const amount = Math.min(points, maxAllocation(viewOf(goal), balance(totals).available));
+  if (!amount) return;
+  const row = { id: crypto.randomUUID(), goal_id: goalId, member_id: who.id, points: amount, created_at: nowIso() };
+  const reached = goalView(goal, (goalProgress.get(goalId) ?? 0) + amount).reached;
+  await attempt(async () => {
+    const statements = [{ sql: "INSERT INTO app_earn_it__allocations (id, goal_id, member_id, points, created_at) VALUES (?, ?, ?, ?, ?)", params: [row.id, row.goal_id, row.member_id, row.points, row.created_at] }];
+    if (reached) statements.push({ sql: "UPDATE app_earn_it__goals SET attained_at = ? WHERE id = ?", params: [row.created_at, goalId] });
+    await db.batch(statements);
+    goalProgress.set(goalId, (goalProgress.get(goalId) ?? 0) + amount);
+    totals = { ...totals, spent: totals.spent + amount };
+    if (reached) goals = goals.map(g => (g.id === goalId ? { ...g, attained_at: row.created_at } : g));
+    demoWrite(s => {
+      s.allocations = [...s.allocations, row];
+      if (reached) s.goals = s.goals.map(g => (g.id === goalId ? { ...g, attained_at: row.created_at } : g));
+    });
+    closeModal();
+    render();
+  });
+}
+
+async function takeBack(goalId) {
+  const who = me();
+  const goal = goalById(goalId);
+  if (!who || !goal || goal.member_id !== who.id) return;
+  const put = goalProgress.get(goalId) ?? 0;
+  const yes = await hubConfirm({ message: `Take ${formatPoints(put)} back from ${goal.name}?`, description: "They return to your balance.", confirmLabel: "Take back" });
+  if (!yes) return;
+  await attempt(async () => {
+    await db.batch([
+      { sql: "DELETE FROM app_earn_it__allocations WHERE goal_id = ?", params: [goalId] },
+      { sql: "UPDATE app_earn_it__goals SET attained_at = ? WHERE id = ?", params: [null, goalId] },
+    ]);
+    goalProgress.delete(goalId);
+    totals = { ...totals, spent: Math.max(0, totals.spent - put) };
+    goals = goals.map(g => (g.id === goalId ? { ...g, attained_at: null } : g));
+    demoWrite(s => {
+      s.allocations = s.allocations.filter(a => a.goal_id !== goalId);
+      s.goals = s.goals.map(g => (g.id === goalId ? { ...g, attained_at: null } : g));
+    });
+    closeModal();
+    render();
+  });
+}
+
+async function deleteGoal(goalId) {
+  const who = me();
+  const goal = goalById(goalId);
+  if (!who || !goal || goal.member_id !== who.id) return;
+  const put = goalProgress.get(goalId) ?? 0;
+  const yes = await hubConfirm({
+    message: `Delete ${goal.name}?`,
+    description: put ? `The ${formatPoints(put)} put toward it return to your balance.` : undefined,
+    confirmLabel: "Delete", destructive: true,
+  });
+  if (!yes) return;
+  await attempt(async () => {
+    // The manifest's delete_cascades removes its allocations with it.
+    await db("DELETE FROM app_earn_it__goals WHERE id = ?", [goalId]);
+    goals = goals.filter(g => g.id !== goalId);
+    goalProgress.delete(goalId);
+    totals = { ...totals, spent: Math.max(0, totals.spent - put) };
+    demoWrite(s => {
+      s.goals = s.goals.filter(g => g.id !== goalId);
+      s.allocations = s.allocations.filter(a => a.goal_id !== goalId);
+    });
+    closeModal();
+    render();
+  });
+}
+
+// --- Rendering ---------------------------------------------------------------
+function renderDemoBar() {
+  if (CONTEXT) return "";
+  return `<div class="demo-bar"><strong>Demo — preview as:</strong>${members.map(m =>
+    `<button type="button" class="${me()?.id === m.id ? "on" : ""}" data-action="demo-me" data-id="${esc(m.id)}">${esc(m.name)}</button>`).join("")}</div>`;
+}
+
+function renderBalance(items) {
+  const b = balance(totals);
+  const waiting = pendingPoints(items);
+  return `<div class="card balance">
+    <div>
+      <div class="balance-number">${b.available.toLocaleString("en-US")}</div>
+      <div class="balance-label">${b.available === 1 ? "point" : "points"} to use</div>
+    </div>
+    <div class="balance-parts tiny muted">
+      <div>${formatPoints(b.earned)} earned</div>
+      <div>${formatPoints(b.spent)} toward goals</div>
+      ${waiting ? `<div>${formatPoints(waiting)} waiting to be verified</div>` : ""}
+      ${b.overdrawn ? `<div>${formatPoints(b.overdrawn)} over: a verified claim was taken back</div>` : ""}
+    </div>
+  </div>`;
+}
+
+function renderToVerify() {
+  const list = toVerify({ meId: me()?.id, directClaims, openClaims, decisions: openDecisions });
+  if (!list.length) return "";
+  return `<div class="section-head"><h2>For you to verify</h2></div>
+    <div class="card">${list.map(item => `<div class="row">
+      <div class="row-body">
+        <div class="row-title">${esc(memberName(item.memberId))} · ${formatPoints(item.points)}</div>
+        <div class="muted">${esc(item.note)}</div>
+        <div class="tiny muted">${esc(formatRelativeDate(item.at))}${item.kind === "open" ? " · open to anyone" : ""}</div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn btn-sm" data-action="approve" data-kind="${item.kind}" data-id="${esc(item.id)}">Approve</button>
+        <button type="button" class="btn-link" data-action="review" data-kind="${item.kind}" data-id="${esc(item.id)}">Change or deny</button>
+      </div>
+    </div>`).join("")}</div>`;
+}
+
+function renderGoal(goal) {
+  const v = viewOf(goal);
+  const can = maxAllocation(v, balance(totals).available);
+  return `<article class="card">
+    <div class="goal-head">
+      <div class="goal-body">
+        <div class="goal-name">${esc(goal.name)}</div>
+        ${goal.note ? `<div class="tiny muted goal-note">${esc(goal.note)}</div>` : ""}
+      </div>
+      <button type="button" class="btn-link" data-action="goal-edit" data-id="${esc(goal.id)}">Edit</button>
+    </div>
+    <div class="track" role="progressbar" aria-valuemin="0" aria-valuemax="${v.cost}" aria-valuenow="${Math.min(v.allocated, v.cost)}" aria-label="${esc(goal.name)}">
+      <div class="fill ${v.reached ? "done" : ""}" style="width:${Math.round(v.pct * 100)}%"></div>
+    </div>
+    <div class="goal-foot">
+      <div class="tiny ${v.reached ? "reached" : "muted"}">
+        ${v.reached ? "Reached 🎉" : `${v.allocated.toLocaleString("en-US")} of ${formatPoints(v.cost)}`}
+        ${goal.visibility === "everyone" ? " · shared" : ""}
+      </div>
+      ${v.reached ? "" : `<button type="button" class="btn btn-ghost btn-sm" data-action="goal-put" data-id="${esc(goal.id)}" ${can ? "" : "disabled"}>Put points toward it</button>`}
+    </div>
+  </article>`;
+}
+
+function renderGoals() {
+  const list = myGoals();
+  const head = `<div class="section-head"><h2>Your goals</h2><button type="button" class="btn btn-ghost btn-sm" data-action="goal-new">+ Goal</button></div>`;
+  if (!list.length) {
+    return `${head}<div class="card empty"><div class="empty-icon">🎯</div><div>Set a goal: something you want, and what it costs in points.</div></div>`;
+  }
+  return `${head}<div class="stack">${list.map(renderGoal).join("")}</div>`;
+}
+
+function renderSharedGoals() {
+  const list = goals.filter(g => g.member_id !== me()?.id);
+  if (!list.length) return "";
+  return `<div class="section-head"><h2>Shared by others</h2></div>
+    <div class="card">${list.map(goal => {
+      const v = viewOf(goal);
+      return `<div class="row">
+        <div class="row-body">
+          <div class="row-title">${esc(goal.name)}</div>
+          <div class="tiny muted">${esc(memberName(goal.member_id))} · ${v.reached ? "reached 🎉" : `${v.allocated.toLocaleString("en-US")} of ${formatPoints(v.cost)}`}</div>
+        </div>
+      </div>`;
+    }).join("")}</div>`;
+}
+
+function feedRows(items) {
+  if (!searchQ) return items;
+  return items.filter(item => searchMatch(searchQ, searchableFields(item, itemStatus(item, memberName).label)));
+}
+
+function renderFeedList(items) {
+  const rows = feedRows(items);
+  if (!rows.length) return `<div class="empty">No points match "${esc(searchQ)}".</div>`;
+  const who = me();
+  return rows.slice(0, 80).map(item => {
+    const status = itemStatus(item, memberName);
+    const tone = item.state === "counted" ? "" : item.state === "denied" ? "no" : "off";
+    return `<div class="row">
+      <div class="row-body">
+        <div class="row-title">${esc(item.note || "Points")}</div>
+        <div class="tiny muted"><span class="badge ${status.tone}">${esc(status.label)}</span> ${esc(formatRelativeDate(item.at))}</div>
+      </div>
+      ${canWithdraw(who?.id, item) ? `<button type="button" class="btn-link" data-action="withdraw" data-kind="${item.kind}" data-id="${esc(item.id)}">Withdraw</button>` : ""}
+      <div class="row-points ${tone}">${item.state === "counted" ? "+" : ""}${item.points.toLocaleString("en-US")}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderFeed(items) {
+  if (!items.length) {
+    return `<div class="section-head"><h2>Your points</h2></div>
+      <div class="card empty"><div class="empty-icon">🏅</div><div>Nothing yet. Did something worth points? Add it.</div></div>`;
+  }
+  return `<div class="section-head"><h2>Your points</h2></div>
+    ${items.length > 8 ? `<div class="search-row"><input id="search" class="search-input" type="search" placeholder="Search your points…" aria-label="Search your points" value="${esc(searchQ)}" /></div>` : ""}
+    <div class="card" id="feed">${renderFeedList(items)}</div>`;
+}
+
+function render() {
+  const root = document.getElementById("root");
+  if (!ready) return;
+  if (!me()) {
+    root.innerHTML = `<div class="card empty">Sign in to the hub to use Earn It.</div>`;
+    return;
+  }
+  const items = feed();
+  root.innerHTML = `
+    <div class="topbar">
+      <h1>🏅 Earn It</h1>
+      <button type="button" class="btn" data-action="earn-new">+ Points</button>
+    </div>
+    ${renderDemoBar()}
+    ${error ? `<div class="error" role="alert">${esc(error)}</div>` : ""}
+    ${renderBalance(items)}
+    ${renderToVerify()}
+    ${renderGoals()}
+    ${renderSharedGoals()}
+    ${renderFeed(items)}
+  `;
+}
+
+// --- Modals ------------------------------------------------------------------
+function openModal(html) {
+  closeModal();
+  modalEl = document.createElement("div");
+  modalEl.className = "modal-backdrop";
+  modalEl.innerHTML = `<div class="modal" role="dialog" aria-modal="true">${html}</div>`;
+  modalEl.addEventListener("click", (e) => { if (e.target === modalEl) closeModal(); });
+  document.body.appendChild(modalEl);
+  requestAnimationFrame(() => modalEl?.querySelector("[data-autofocus]")?.focus());
+}
+function closeModal() { modalEl?.remove(); modalEl = null; }
+
+/** What the Earn form will do with the chosen verifier, in words. */
+function choiceCopy(choice) {
+  if (choice.mode === MODE_PERSON) {
+    const name = memberName(choice.verifierId);
+    return { button: `Send to ${name}`, hint: `Only you and ${name} see this. The points count once ${name} approves them.` };
+  }
+  if (choice.mode === MODE_ANYONE) {
+    return { button: "Post for anyone", hint: "Everyone here sees this. The points count once the first person approves them." };
+  }
+  return { button: "Log points", hint: "Only you see this. The points count right away." };
+}
+
+function openEarnModal() {
+  const current = prefs();
+  const others = choices();
+  const copy = choiceCopy(current);
+  openModal(`
+    <form id="earn-form">
+      <div class="modal-title">Earn points</div>
+      <div class="field">
+        <label for="f-note">What did you do?</label>
+        <input type="text" id="f-note" name="note" maxlength="200" placeholder="Went for a run, finished the report…" data-autofocus required />
+      </div>
+      <div class="field">
+        <label for="f-points">Points</label>
+        <input type="number" id="f-points" name="points" min="1" max="${MAX_POINTS}" inputmode="numeric" value="5" required />
+        <div class="quick">${[1, 2, 5, 10, 20, 50].map(n => `<button type="button" data-action="quick-points" data-points="${n}">${n}</button>`).join("")}</div>
+      </div>
+      ${others.length ? `<div class="field">
+        <label for="f-verifier">Who verifies it?</label>
+        <select id="f-verifier" name="verifier">
+          <option value="${MODE_NONE}" ${current.mode === MODE_NONE ? "selected" : ""}>Nobody, I'm logging it myself</option>
+          ${others.map(m => `<option value="person:${esc(m.id)}" ${choiceValue(current) === `person:${m.id}` ? "selected" : ""}>${esc(m.name)}</option>`).join("")}
+          <option value="${MODE_ANYONE}" ${current.mode === MODE_ANYONE ? "selected" : ""}>Anyone, first to respond</option>
+        </select>
+      </div>` : ""}
+      <div class="tiny muted" id="earn-hint">${esc(copy.hint)}</div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-action="modal-close">Cancel</button>
+        <button type="submit" class="btn" id="earn-submit">${esc(copy.button)}</button>
+      </div>
+    </form>`);
+}
+
+function openReviewModal(kind, id) {
+  const who = me();
+  const claim = (kind === "direct" ? directClaims : openClaims).find(c => c.id === id);
+  if (!claim) return;
+  const allowed = kind === "direct" ? canDecideDirect(who?.id, claim) : canDecideOpen(who?.id, claim, decisionsByClaim(openDecisions).get(id));
+  if (!allowed) return;
+  const asked = Number(claim.points_requested) || 1;
+  openModal(`
+    <form id="review-form" data-kind="${kind}" data-id="${esc(id)}">
+      <div class="modal-title">${esc(memberName(claim.member_id))} asks for ${formatPoints(asked)}</div>
+      <p class="muted" style="margin-bottom:14px">${esc(claim.note)}</p>
+      <div class="field">
+        <label for="f-grant">Points to approve</label>
+        <input type="number" id="f-grant" name="points" min="1" max="${MAX_POINTS}" inputmode="numeric" value="${asked}" data-autofocus required />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-danger btn-sm" data-action="deny" data-kind="${kind}" data-id="${esc(id)}">Deny</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn btn-ghost" data-action="modal-close">Cancel</button>
+        <button type="submit" class="btn">Approve</button>
+      </div>
+    </form>`);
+}
+
+function openGoalModal(id) {
+  const existing = id ? goalById(id) : null;
+  if (id && existing?.member_id !== me()?.id) return;
+  const put = existing ? (goalProgress.get(existing.id) ?? 0) : 0;
+  openModal(`
+    <form id="goal-form" data-id="${esc(existing?.id ?? "")}">
+      <div class="modal-title">${existing ? "Edit goal" : "New goal"}</div>
+      <div class="field">
+        <label for="f-goal-name">What are you earning?</label>
+        <input type="text" id="f-goal-name" name="name" maxlength="80" placeholder="New running shoes, a day off…" value="${esc(existing?.name ?? "")}" data-autofocus required />
+      </div>
+      <div class="field">
+        <label for="f-goal-cost">Cost in points</label>
+        <input type="number" id="f-goal-cost" name="cost" min="1" max="${MAX_POINTS}" inputmode="numeric" value="${Number(existing?.cost_points) || 50}" required />
+      </div>
+      <div class="field">
+        <label for="f-goal-note">Note (optional)</label>
+        <textarea id="f-goal-note" name="note" maxlength="300">${esc(existing?.note ?? "")}</textarea>
+      </div>
+      <label class="check"><input type="checkbox" name="shared" ${existing?.visibility === "everyone" ? "checked" : ""} /> Let everyone here see this goal</label>
+      <div class="modal-actions">
+        ${existing ? `<button type="button" class="btn btn-danger btn-sm" data-action="goal-delete" data-id="${esc(existing.id)}">Delete</button>
+          ${put ? `<button type="button" class="btn btn-ghost btn-sm" data-action="goal-take-back" data-id="${esc(existing.id)}">Take points back</button>` : ""}
+          <span class="spacer"></span>` : ""}
+        <button type="button" class="btn btn-ghost" data-action="modal-close">Cancel</button>
+        <button type="submit" class="btn">Save</button>
+      </div>
+    </form>`);
+}
+
+function openPutModal(id) {
+  const goal = goalById(id);
+  if (!goal || goal.member_id !== me()?.id) return;
+  const v = viewOf(goal);
+  const available = balance(totals).available;
+  const max = maxAllocation(v, available);
+  if (!max) return;
+  openModal(`
+    <form id="put-form" data-id="${esc(goal.id)}">
+      <div class="modal-title">${esc(goal.name)}</div>
+      <p class="muted" style="margin-bottom:14px">Needs ${formatPoints(v.remaining)} more. You have ${formatPoints(available)} to use.</p>
+      <div class="field">
+        <label for="f-put">Points to put toward it</label>
+        <input type="number" id="f-put" name="points" min="1" max="${max}" inputmode="numeric" value="${max}" data-autofocus required />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-action="modal-close">Cancel</button>
+        <button type="submit" class="btn">Put points</button>
+      </div>
+    </form>`);
+}
+
+// --- Events ------------------------------------------------------------------
+function busy(form, label) {
+  const button = form.querySelector("button[type=submit]");
+  if (button) { button.disabled = true; button.textContent = label; }
+}
+
+document.addEventListener("click", (event) => {
+  const target = event.target.closest("[data-action]");
+  if (!target) return;
+  const id = target.getAttribute("data-id") ?? "";
+  const kind = target.getAttribute("data-kind") ?? "";
+  switch (target.getAttribute("data-action")) {
+    case "demo-me": demoMe = memberMap.get(id) ?? null; searchQ = ""; error = ""; scopeDemo(); render(); break;
+    case "earn-new": openEarnModal(); break;
+    case "quick-points": {
+      const input = modalEl?.querySelector("[name=points]");
+      if (input) input.value = target.getAttribute("data-points");
+      break;
+    }
+    case "approve": {
+      const claim = (kind === "direct" ? directClaims : openClaims).find(c => c.id === id);
+      if (!claim) break;
+      target.disabled = true;
+      decide(kind, id, true, clampPoints(claim.points_requested));
+      break;
+    }
+    case "review": openReviewModal(kind, id); break;
+    case "deny": target.disabled = true; decide(kind, id, false, 0); break;
+    case "withdraw": withdraw(kind, id); break;
+    case "goal-new": openGoalModal(""); break;
+    case "goal-edit": openGoalModal(id); break;
+    case "goal-put": openPutModal(id); break;
+    case "goal-take-back": takeBack(id); break;
+    case "goal-delete": deleteGoal(id); break;
+    case "modal-close": closeModal(); break;
+  }
+});
+
+document.addEventListener("submit", (event) => {
+  const form = event.target;
+  event.preventDefault();
+  if (form.id === "goal-form") { saveGoal(form); return; }
+  if (form.id === "earn-form") {
+    const note = field(form, "note").value.trim();
+    const points = clampPoints(field(form, "points").value);
+    if (!note) { field(form, "note").focus(); return; }
+    if (!points) { field(form, "points").focus(); return; }
+    const choice = parseChoice(field(form, "verifier")?.value);
+    busy(form, "Saving…");
+    earn({ note, points, choice });
+    return;
+  }
+  if (form.id === "review-form") {
+    const points = clampPoints(field(form, "points").value);
+    if (!points) { field(form, "points").focus(); return; }
+    busy(form, "Saving…");
+    decide(form.dataset.kind, form.dataset.id, true, points);
+    return;
+  }
+  if (form.id === "put-form") {
+    const points = clampPoints(field(form, "points").value);
+    if (!points) { field(form, "points").focus(); return; }
+    busy(form, "Saving…");
+    putPoints(form.dataset.id, points);
+  }
+});
+
+// The Earn form says what the chosen verifier means before it is sent.
+document.addEventListener("change", (event) => {
+  if (event.target.id !== "f-verifier") return;
+  const copy = choiceCopy(parseChoice(event.target.value));
+  const hint = document.getElementById("earn-hint");
+  const submit = document.getElementById("earn-submit");
+  if (hint) hint.textContent = copy.hint;
+  if (submit) submit.textContent = copy.button;
+});
+
+// Re-render only the list on each keystroke so the search box keeps focus.
+document.addEventListener("input", (event) => {
+  if (event.target.id !== "search") return;
+  searchQ = event.target.value;
+  const list = document.getElementById("feed");
+  if (list) list.innerHTML = renderFeedList(feed());
+});
+
+document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeModal(); });
+
+// A claim someone approved while this was in the background shows up on return.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && ready && !modalEl && !DEMO) refresh();
+});
+
+refresh();
+</script>
+</body>
+</html>

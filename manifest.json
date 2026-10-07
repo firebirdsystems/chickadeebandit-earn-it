@@ -1,0 +1,376 @@
+{
+  "$schema": "https://chickadeebandit.com/manifest-schema.json",
+  "id": "earn-it",
+  "contexts": [
+    "household",
+    "shared_space"
+  ],
+  "name": "Earn It",
+  "version": "1.0.0",
+  "description": "Points for adults. Earn points for what you do, on your honor or verified by someone you choose, and put them toward goals you set for yourself.",
+  "entrypoint": "index.html",
+  "runtime": "static",
+  "category": "general",
+  "tags": [
+    "points",
+    "goals",
+    "accountability",
+    "motivation",
+    "rewards"
+  ],
+  "data_access": {
+    "reads": [
+      "family.members",
+      "family.app_members"
+    ],
+    "writes": []
+  },
+  "permissions": {
+    "default_audience": "adults",
+    "requires_approval": false
+  },
+  "storage": "db",
+  "db_plaintext_columns": [
+    "verifier_mode"
+  ],
+  "row_policies": {
+    "prefs": {
+      "kind": "owner_only",
+      "member_column": "member_id",
+      "adults_bypass": false
+    },
+    "entries": {
+      "kind": "owner_only",
+      "member_column": "member_id",
+      "adults_bypass": false
+    },
+    "direct_claims": {
+      "kind": "party_scoped",
+      "member_columns": [
+        "member_id",
+        "verifier_id"
+      ],
+      "self_column": "member_id",
+      "column_write_acls": {
+        "status": {
+          "writable_by": [
+            "owner"
+          ],
+          "owner_column": "verifier_id"
+        },
+        "points_granted": {
+          "writable_by": [
+            "owner"
+          ],
+          "owner_column": "verifier_id"
+        },
+        "decided_at": {
+          "writable_by": [
+            "owner"
+          ],
+          "owner_column": "verifier_id"
+        },
+        "member_id": {
+          "writable_by": [],
+          "actions": [
+            "update"
+          ]
+        },
+        "verifier_id": {
+          "writable_by": [],
+          "actions": [
+            "update"
+          ]
+        },
+        "note": {
+          "writable_by": [],
+          "actions": [
+            "update"
+          ]
+        },
+        "points_requested": {
+          "writable_by": [],
+          "actions": [
+            "update"
+          ]
+        }
+      },
+      "frozen_when": {
+        "status_column": "status",
+        "locked_values": [
+          "approved",
+          "denied"
+        ]
+      }
+    },
+    "open_claims": {
+      "kind": "owner_or_visibility",
+      "member_column": "member_id",
+      "visibility_column": "visibility",
+      "everyone_values": [
+        "everyone"
+      ],
+      "write_owner_only": true,
+      "column_write_acls": {
+        "note": {
+          "writable_by": [],
+          "actions": [
+            "update"
+          ]
+        },
+        "points_requested": {
+          "writable_by": [],
+          "actions": [
+            "update"
+          ]
+        }
+      }
+    },
+    "open_decisions": {
+      "kind": "inherit_visibility",
+      "fk_column": "claim_id",
+      "parent_table": "open_claims",
+      "writer_column": "decided_by",
+      "column_write_acls": {
+        "claim_id": {
+          "writable_by": [],
+          "actions": [
+            "update"
+          ]
+        },
+        "decided_by": {
+          "writable_by": [],
+          "actions": [
+            "update"
+          ]
+        },
+        "status": {
+          "writable_by": [],
+          "actions": [
+            "update"
+          ]
+        },
+        "points_granted": {
+          "writable_by": [],
+          "actions": [
+            "update"
+          ]
+        },
+        "member_id": {
+          "writable_by": [],
+          "actions": [
+            "update"
+          ]
+        }
+      }
+    },
+    "goals": {
+      "kind": "owner_or_visibility",
+      "member_column": "member_id",
+      "visibility_column": "visibility",
+      "everyone_values": [
+        "everyone"
+      ],
+      "write_owner_only": true
+    },
+    "allocations": {
+      "kind": "inherit_visibility",
+      "fk_column": "goal_id",
+      "parent_table": "goals",
+      "writer_column": "member_id",
+      "insert_owner_only": true
+    },
+    "auto_awards": {
+      "kind": "owner_only",
+      "member_column": "member_id",
+      "adults_bypass": false,
+      "endpoint_writes_only": true
+    }
+  },
+  "delete_cascades": {
+    "open_claims": [
+      {
+        "table": "open_decisions",
+        "foreign_key": "claim_id"
+      }
+    ],
+    "goals": [
+      {
+        "table": "allocations",
+        "foreign_key": "goal_id"
+      }
+    ]
+  },
+  "member_references": {
+    "prefs": {
+      "column": "member_id",
+      "on_removed": "delete",
+      "id_column": "rowid"
+    },
+    "entries": {
+      "column": "member_id",
+      "on_removed": "delete"
+    },
+    "direct_claims": [
+      {
+        "column": "member_id",
+        "on_removed": "delete"
+      },
+      {
+        "column": "verifier_id",
+        "on_removed": "keep"
+      }
+    ],
+    "open_claims": {
+      "column": "member_id",
+      "on_removed": "delete",
+      "dependent_tables": [
+        {
+          "table": "open_decisions",
+          "foreign_key": "claim_id"
+        }
+      ]
+    },
+    "open_decisions": [
+      {
+        "column": "member_id",
+        "on_removed": "delete"
+      },
+      {
+        "column": "decided_by",
+        "on_removed": "keep"
+      }
+    ],
+    "goals": {
+      "column": "member_id",
+      "on_removed": "delete",
+      "dependent_tables": [
+        {
+          "table": "allocations",
+          "foreign_key": "goal_id"
+        }
+      ]
+    },
+    "allocations": {
+      "column": "member_id",
+      "on_removed": "keep"
+    },
+    "auto_awards": {
+      "column": "member_id",
+      "on_removed": "delete"
+    }
+  },
+  "automation_actions": {
+    "award": {
+      "title": "Award points to a member",
+      "description": "Pay points into someone's Earn It balance when another app's event fires: a streak or habit milestone reached, a task finished.",
+      "params": {
+        "member_id": {
+          "type": "member",
+          "label": "Who earns the points",
+          "required": true
+        },
+        "points": {
+          "type": "integer",
+          "label": "Points",
+          "required": true,
+          "min": 1
+        },
+        "note": {
+          "type": "text",
+          "label": "Note",
+          "default": "Awarded by an automation"
+        }
+      },
+      "dedupe": {
+        "table": "auto_awards",
+        "column": "source_event_id"
+      },
+      "steps": [
+        {
+          "op": "insert",
+          "table": "auto_awards",
+          "values": {
+            "id": "$uuid",
+            "member_id": ":member_id",
+            "points": ":points",
+            "note": ":note",
+            "source_event_id": "$event_id",
+            "awarded_at": "$now"
+          }
+        }
+      ]
+    }
+  },
+  "suggested_automations": [
+    {
+      "title": "Earn points for a streak milestone",
+      "description": "Hitting a streak milestone pays one point per day of the streak, so the longer runs are worth more.",
+      "trigger_event": "streak.milestone",
+      "target_app_id": "earn-it",
+      "action_id": "award",
+      "param_map": {
+        "member_id": {
+          "kind": "subject_id"
+        },
+        "points": {
+          "kind": "scaled_field",
+          "value": "days",
+          "factor": 1
+        }
+      }
+    },
+    {
+      "title": "Earn points for a habit milestone",
+      "description": "A habit milestone pays five points. Change the amount to suit.",
+      "trigger_event": "habit.milestone",
+      "target_app_id": "earn-it",
+      "action_id": "award",
+      "param_map": {
+        "member_id": {
+          "kind": "subject_id"
+        },
+        "points": {
+          "kind": "const",
+          "value": 5
+        }
+      }
+    },
+    {
+      "title": "Earn a point when a task is completed",
+      "description": "Every completed task pays one point to whoever it was assigned to.",
+      "trigger_event": "task.completed",
+      "target_app_id": "earn-it",
+      "action_id": "award",
+      "param_map": {
+        "member_id": {
+          "kind": "payload_field",
+          "value": "assignee_id"
+        },
+        "points": {
+          "kind": "const",
+          "value": 1
+        }
+      }
+    }
+  ],
+  "glance": {
+    "source": {
+      "kind": "sql",
+      "query": "SELECT COUNT(*) AS n FROM app_earn_it__direct_claims WHERE verifier_id = :me AND status = 'pending' LIMIT 1"
+    },
+    "display": {
+      "template": "badge",
+      "count": "n",
+      "label": "claims to verify",
+      "severity": "info"
+    }
+  },
+  "resource_limits": {
+    "max_db_bytes": 52428800
+  },
+  "nav": {
+    "label": "Earn It"
+  },
+  "icon": "🏅"
+}
