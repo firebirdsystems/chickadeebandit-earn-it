@@ -129,7 +129,7 @@
 <script type="module">
 import {
   esc, hubConfirm, searchMatch, formatRelativeDate,
-  createDbHelper, sendHubNotification, hubAppUrl,
+  createDbHelper, sendHubNotification, hubAppUrl, glyph,
 } from "/hub-sdk.js";
 import {
   MAX_POINTS, MODE_NONE, MODE_PERSON, MODE_ANYONE,
@@ -618,7 +618,7 @@ function renderGoal(goal) {
     </div>
     <div class="goal-foot">
       <div class="tiny ${v.reached ? "reached" : "muted"}">
-        ${v.reached ? "Reached 🎉" : `${v.allocated.toLocaleString("en-US")} of ${formatPoints(v.cost)}`}
+        ${v.reached ? `Reached ${glyph("sparkles")}` : `${v.allocated.toLocaleString("en-US")} of ${formatPoints(v.cost)}`}
         ${goal.visibility === "everyone" ? " · shared" : ""}
       </div>
       ${v.reached ? "" : `<button type="button" class="btn btn-ghost btn-sm" data-action="goal-put" data-id="${esc(goal.id)}" ${can ? "" : "disabled"}>Put points toward it</button>`}
@@ -644,7 +644,7 @@ function renderSharedGoals() {
       return `<div class="row">
         <div class="row-body">
           <div class="row-title">${esc(goal.name)}</div>
-          <div class="tiny muted">${esc(memberName(goal.member_id))} · ${v.reached ? "reached 🎉" : `${v.allocated.toLocaleString("en-US")} of ${formatPoints(v.cost)}`}</div>
+          <div class="tiny muted">${esc(memberName(goal.member_id))} · ${v.reached ? `reached ${glyph("sparkles")}` : `${v.allocated.toLocaleString("en-US")} of ${formatPoints(v.cost)}`}</div>
         </div>
       </div>`;
     }).join("")}</div>`;
