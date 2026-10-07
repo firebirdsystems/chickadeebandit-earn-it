@@ -34,7 +34,7 @@
     .app { max-width: 680px; margin: 0 auto; padding: 16px 16px 56px; }
     .loading { color: var(--muted); text-align: center; padding: 40px 16px; }
     .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-    h1 { font-size: 1.35rem; line-height: 1.2; }
+    h1 { font-size: 1.35rem; line-height: 1.2; display: flex; align-items: center; gap: 8px; }
     h2 { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 800; }
     .section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 22px 0 8px; min-height: 32px; }
     .muted { color: var(--muted); }
@@ -85,7 +85,7 @@
     .badge.no { background: var(--red-soft); color: var(--red); }
     .badge.plain { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
     .empty { color: var(--muted); text-align: center; padding: 26px 16px; }
-    .empty-icon { font-size: 2.4rem; margin-bottom: 8px; }
+    .empty-art { margin-bottom: 10px; }
 
     /* Goals */
     .goal-head { display: flex; align-items: flex-start; gap: 10px; }
@@ -140,6 +140,7 @@ import {
   goalView, maxAllocation, sortGoals, searchableFields,
 } from "./logic.js";
 import { firstRenderBatch, namedResults } from "./reads.js";
+import { medalBird, targetBird } from "./art.js";
 
 // --- Hub runtime globals (empty in demo mode) --------------------------------
 const CONTEXT = window.__CONTEXT_URL ?? "";
@@ -629,7 +630,7 @@ function renderGoals() {
   const list = myGoals();
   const head = `<div class="section-head"><h2>Your goals</h2><button type="button" class="btn btn-ghost btn-sm" data-action="goal-new">+ Goal</button></div>`;
   if (!list.length) {
-    return `${head}<div class="card empty"><div class="empty-icon">🎯</div><div>Set a goal: something you want, and what it costs in points.</div></div>`;
+    return `${head}<div class="card empty"><div class="empty-art">${targetBird(104)}</div><div>Set a goal: something you want, and what it costs in points.</div></div>`;
   }
   return `${head}<div class="stack">${list.map(renderGoal).join("")}</div>`;
 }
@@ -675,7 +676,7 @@ function renderFeedList(items) {
 function renderFeed(items) {
   if (!items.length) {
     return `<div class="section-head"><h2>Your points</h2></div>
-      <div class="card empty"><div class="empty-icon">🏅</div><div>Nothing yet. Did something worth points? Add it.</div></div>`;
+      <div class="card empty"><div class="empty-art">${medalBird(104)}</div><div>Nothing yet. Did something worth points? Add it.</div></div>`;
   }
   return `<div class="section-head"><h2>Your points</h2></div>
     ${items.length > 8 ? `<div class="search-row"><input id="search" class="search-input" type="search" placeholder="Search your points…" aria-label="Search your points" value="${esc(searchQ)}" /></div>` : ""}
@@ -692,7 +693,7 @@ function render() {
   const items = feed();
   root.innerHTML = `
     <div class="topbar">
-      <h1>🏅 Earn It</h1>
+      <h1>${medalBird(34)} Earn It</h1>
       <button type="button" class="btn" data-action="earn-new">+ Points</button>
     </div>
     ${renderDemoBar()}
