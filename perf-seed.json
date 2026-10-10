@@ -1,0 +1,415 @@
+{
+ "seed": [
+  {
+   "sql": "INSERT INTO app_earn_it__prefs (member_id, verifier_mode, updated_at) VALUES (?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-480 hours'))",
+   "params": [
+    "{{me}}",
+    "anyone"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__entries (id, member_id, points, note, created_at) VALUES (?, ?, 5, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-6 hours'))",
+   "params": [
+    "en-1",
+    "{{me}}",
+    "Morning run, 5k"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__entries (id, member_id, points, note, created_at) VALUES (?, ?, 8, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-30 hours'))",
+   "params": [
+    "en-2",
+    "{{me}}",
+    "Meal prepped lunches for the week"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__entries (id, member_id, points, note, created_at) VALUES (?, ?, 4, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-52 hours'))",
+   "params": [
+    "en-3",
+    "{{me}}",
+    "No phone after 9 pm"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__entries (id, member_id, points, note, created_at) VALUES (?, ?, 10, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-75 hours'))",
+   "params": [
+    "en-4",
+    "{{me}}",
+    "Finished the tax paperwork"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__entries (id, member_id, points, note, created_at) VALUES (?, ?, 5, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-100 hours'))",
+   "params": [
+    "en-5",
+    "{{me}}",
+    "Gym, legs day"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__entries (id, member_id, points, note, created_at) VALUES (?, ?, 3, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-125 hours'))",
+   "params": [
+    "en-6",
+    "{{me}}",
+    "Read for 30 minutes"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__entries (id, member_id, points, note, created_at) VALUES (?, ?, 6, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-150 hours'))",
+   "params": [
+    "en-7",
+    "{{me}}",
+    "Morning run, 6k"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__entries (id, member_id, points, note, created_at) VALUES (?, ?, 8, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-200 hours'))",
+   "params": [
+    "en-8",
+    "{{me}}",
+    "Cleaned out the garage shelves"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__entries (id, member_id, points, note, created_at) VALUES (?, ?, 4, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-250 hours'))",
+   "params": [
+    "en-9",
+    "{{me}}",
+    "Cooked dinner instead of takeout"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__entries (id, member_id, points, note, created_at) VALUES (?, ?, 5, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-330 hours'))",
+   "params": [
+    "en-10",
+    "{{me}}",
+    "Gym, upper body"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__entries (id, member_id, points, note, created_at) VALUES (?, ?, 12, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-420 hours'))",
+   "params": [
+    "en-11",
+    "{{me}}",
+    "Painted the hallway"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__entries (id, member_id, points, note, created_at) VALUES (?, ?, 3, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-500 hours'))",
+   "params": [
+    "en-12",
+    "{{me}}",
+    "Flossed every day this week"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__direct_claims (id, member_id, verifier_id, note, points_requested, status, created_at) VALUES (?, ?, ?, ?, 10, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-20 hours'))",
+   "params": [
+    "dc-1",
+    "{{me}}",
+    "{{me}}",
+    "Deep cleaned the oven",
+    "pending"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__direct_claims (id, member_id, verifier_id, note, points_requested, status, points_granted, decided_at, created_at) VALUES (?, ?, ?, ?, 15, ?, 15, strftime('%Y-%m-%dT%H:%M:%fZ','now','-595 hours'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-600 hours'))",
+   "params": [
+    "dc-2",
+    "{{me}}",
+    "{{me}}",
+    "Ran the school bake sale table",
+    "approved"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__direct_claims (id, member_id, verifier_id, note, points_requested, status, points_granted, decided_at, created_at) VALUES (?, ?, ?, ?, 12, ?, 10, strftime('%Y-%m-%dT%H:%M:%fZ','now','-695 hours'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-700 hours'))",
+   "params": [
+    "dc-3",
+    "{{me}}",
+    "{{me}}",
+    "Fixed the leaky faucet",
+    "approved"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__direct_claims (id, member_id, verifier_id, note, points_requested, status, points_granted, decided_at, created_at) VALUES (?, ?, ?, ?, 5, ?, 0, strftime('%Y-%m-%dT%H:%M:%fZ','now','-715 hours'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-720 hours'))",
+   "params": [
+    "dc-4",
+    "{{me}}",
+    "{{me}}",
+    "Watched a tutorial about fixing the faucet",
+    "denied"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__open_claims (id, member_id, note, points_requested, visibility, created_at) VALUES (?, ?, ?, 12, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-3 hours'))",
+   "params": [
+    "oc-1",
+    "{{me}}",
+    "Raked the whole front yard",
+    "everyone"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__open_claims (id, member_id, note, points_requested, visibility, created_at) VALUES (?, ?, ?, 8, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-28 hours'))",
+   "params": [
+    "oc-2",
+    "{{me}}",
+    "Organized the pantry",
+    "everyone"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__open_claims (id, member_id, note, points_requested, visibility, created_at) VALUES (?, ?, ?, 10, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-170 hours'))",
+   "params": [
+    "oc-3",
+    "{{me}}",
+    "Ten thousand steps every day this week",
+    "everyone"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__open_decisions (id, claim_id, member_id, decided_by, status, points_granted, decided_at) VALUES (?, ?, ?, ?, ?, 10, strftime('%Y-%m-%dT%H:%M:%fZ','now','-167 hours'))",
+   "params": [
+    "od-3",
+    "oc-3",
+    "{{me}}",
+    "{{me}}",
+    "approved"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__open_claims (id, member_id, note, points_requested, visibility, created_at) VALUES (?, ?, ?, 15, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-260 hours'))",
+   "params": [
+    "oc-4",
+    "{{me}}",
+    "Cleared the gutters",
+    "everyone"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__open_decisions (id, claim_id, member_id, decided_by, status, points_granted, decided_at) VALUES (?, ?, ?, ?, ?, 15, strftime('%Y-%m-%dT%H:%M:%fZ','now','-257 hours'))",
+   "params": [
+    "od-4",
+    "oc-4",
+    "{{me}}",
+    "{{me}}",
+    "approved"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__open_claims (id, member_id, note, points_requested, visibility, created_at) VALUES (?, ?, ?, 8, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-340 hours'))",
+   "params": [
+    "oc-5",
+    "{{me}}",
+    "Called the insurance company and sorted the claim",
+    "everyone"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__open_decisions (id, claim_id, member_id, decided_by, status, points_granted, decided_at) VALUES (?, ?, ?, ?, ?, 6, strftime('%Y-%m-%dT%H:%M:%fZ','now','-337 hours'))",
+   "params": [
+    "od-5",
+    "oc-5",
+    "{{me}}",
+    "{{me}}",
+    "approved"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__open_claims (id, member_id, note, points_requested, visibility, created_at) VALUES (?, ?, ?, 5, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-400 hours'))",
+   "params": [
+    "oc-6",
+    "{{me}}",
+    "Thought about cleaning the basement",
+    "everyone"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__open_decisions (id, claim_id, member_id, decided_by, status, points_granted, decided_at) VALUES (?, ?, ?, ?, ?, 0, strftime('%Y-%m-%dT%H:%M:%fZ','now','-397 hours'))",
+   "params": [
+    "od-6",
+    "oc-6",
+    "{{me}}",
+    "{{me}}",
+    "denied"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__goals (id, member_id, name, note, cost_points, visibility, created_at) VALUES (?, ?, ?, ?, 60, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-900 hours'))",
+   "params": [
+    "g-shoes",
+    "{{me}}",
+    "New running shoes",
+    "The grey trail pair",
+    "private"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__goals (id, member_id, name, cost_points, visibility, attained_at, created_at) VALUES (?, ?, ?, 20, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-300 hours'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1000 hours'))",
+   "params": [
+    "g-dayoff",
+    "{{me}}",
+    "A day off, no chores",
+    "everyone"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__goals (id, member_id, name, note, cost_points, visibility, created_at) VALUES (?, ?, ?, ?, 200, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-800 hours'))",
+   "params": [
+    "g-weekend",
+    "{{me}}",
+    "Weekend away at the lake",
+    "Cabin with the hot tub",
+    "everyone"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__goals (id, member_id, name, cost_points, visibility, created_at) VALUES (?, ?, ?, 90, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-500 hours'))",
+   "params": [
+    "g-headphones",
+    "{{me}}",
+    "Noise cancelling headphones",
+    "private"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__goals (id, member_id, name, note, cost_points, visibility, created_at) VALUES (?, ?, ?, ?, 45, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-240 hours'))",
+   "params": [
+    "g-massage",
+    "{{me}}",
+    "One hour massage",
+    "The place on Elm St",
+    "everyone"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__allocations (id, goal_id, member_id, points, created_at) VALUES (?, ?, ?, 12, strftime('%Y-%m-%dT%H:%M:%fZ','now','-520 hours'))",
+   "params": [
+    "al-1",
+    "g-dayoff",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__allocations (id, goal_id, member_id, points, created_at) VALUES (?, ?, ?, 8, strftime('%Y-%m-%dT%H:%M:%fZ','now','-300 hours'))",
+   "params": [
+    "al-2",
+    "g-dayoff",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__allocations (id, goal_id, member_id, points, created_at) VALUES (?, ?, ?, 15, strftime('%Y-%m-%dT%H:%M:%fZ','now','-450 hours'))",
+   "params": [
+    "al-3",
+    "g-shoes",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__allocations (id, goal_id, member_id, points, created_at) VALUES (?, ?, ?, 10, strftime('%Y-%m-%dT%H:%M:%fZ','now','-190 hours'))",
+   "params": [
+    "al-4",
+    "g-shoes",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__allocations (id, goal_id, member_id, points, created_at) VALUES (?, ?, ?, 5, strftime('%Y-%m-%dT%H:%M:%fZ','now','-40 hours'))",
+   "params": [
+    "al-5",
+    "g-shoes",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__allocations (id, goal_id, member_id, points, created_at) VALUES (?, ?, ?, 20, strftime('%Y-%m-%dT%H:%M:%fZ','now','-280 hours'))",
+   "params": [
+    "al-6",
+    "g-weekend",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__allocations (id, goal_id, member_id, points, created_at) VALUES (?, ?, ?, 10, strftime('%Y-%m-%dT%H:%M:%fZ','now','-60 hours'))",
+   "params": [
+    "al-7",
+    "g-weekend",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__allocations (id, goal_id, member_id, points, created_at) VALUES (?, ?, ?, 10, strftime('%Y-%m-%dT%H:%M:%fZ','now','-130 hours'))",
+   "params": [
+    "al-8",
+    "g-headphones",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__allocations (id, goal_id, member_id, points, created_at) VALUES (?, ?, ?, 5, strftime('%Y-%m-%dT%H:%M:%fZ','now','-10 hours'))",
+   "params": [
+    "al-9",
+    "g-massage",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__auto_awards (id, member_id, points, note, source_event_id, awarded_at) VALUES (?, ?, 5, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-48 hours'))",
+   "params": [
+    "aw-1",
+    "{{me}}",
+    "7 day streak: Morning run",
+    "perf-evt-1"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__auto_awards (id, member_id, points, note, source_event_id, awarded_at) VALUES (?, ?, 3, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-90 hours'))",
+   "params": [
+    "aw-2",
+    "{{me}}",
+    "Task finished: Renew car registration",
+    "perf-evt-2"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__auto_awards (id, member_id, points, note, source_event_id, awarded_at) VALUES (?, ?, 10, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-180 hours'))",
+   "params": [
+    "aw-3",
+    "{{me}}",
+    "14 day streak: No phone after 9 pm",
+    "perf-evt-3"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__auto_awards (id, member_id, points, note, source_event_id, awarded_at) VALUES (?, ?, 3, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-310 hours'))",
+   "params": [
+    "aw-4",
+    "{{me}}",
+    "Task finished: Book dentist appointments",
+    "perf-evt-4"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__auto_awards (id, member_id, points, note, source_event_id, awarded_at) VALUES (?, ?, 5, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-380 hours'))",
+   "params": [
+    "aw-5",
+    "{{me}}",
+    "7 day streak: Read for 30 minutes",
+    "perf-evt-5"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_earn_it__auto_awards (id, member_id, points, note, source_event_id, awarded_at) VALUES (?, ?, 15, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-560 hours'))",
+   "params": [
+    "aw-6",
+    "{{me}}",
+    "30 day streak: Morning run",
+    "perf-evt-6"
+   ]
+  }
+ ]
+}
