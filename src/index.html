@@ -120,6 +120,8 @@
     .quick button { font: inherit; font-size: .85rem; font-weight: 700; padding: 6px 12px; border-radius: 18px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; min-height: 34px; }
     .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; flex-wrap: wrap; }
     .modal-actions .spacer { flex: 1; }
+    .load-error { margin: 0 0 12px; padding: 10px 14px; border-radius: 10px; background: var(--hub-tint-danger, #fee2e2); color: var(--hub-tint-danger-fg, #b91c1c); font-size: 0.9rem; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+    .load-error-retry { background: none; border: 1px solid currentColor; border-radius: 8px; padding: 5px 10px; font: inherit; font-weight: 600; color: inherit; cursor: pointer; flex-shrink: 0; }
   </style>
   <base href="/run/earn-it/">
 </head>
@@ -169,6 +171,8 @@ let searchQ = "";
 let error = "";
 let modalEl = null;
 let ready = false;
+let loaded = false;       // a load has succeeded at least once
+let loadFailed = false;   // the first load failed: banner instead of the page
 
 const me = () => demoMe ?? HUB_MEMBER;
 const nowIso = () => new Date().toISOString();
@@ -193,12 +197,15 @@ async function loadMembers() {
     ];
     appMembers = null;
   } else {
-    try {
-      const res = await fetch(`${CONTEXT}?keys=family.members,family.app_members`);
-      const json = await res.json();
-      members = json["family.members"] ?? [];
-      appMembers = json["family.app_members"] ?? null;
-    } catch { members = []; appMembers = null; }
+    // A failed read throws: it is a failed load, never a household of nobody.
+    const res = await fetch(`${CONTEXT}?keys=family.members,family.app_members`);
+    const json = await res.json().catch(() => null);
+    if (!res.ok || json === null || typeof json !== "object" || Array.isArray(json)) throw new Error("Couldn’t reach the hub. Try again.");
+    // A 200 can still name a key the hub failed to read. An absent `family.app_members` with no
+    // such entry is the hub not saying; a failed one would offer the whole roster as verifiers.
+    if (Array.isArray(json.$errors) && (json.$errors.includes("family.members") || json.$errors.includes("family.app_members"))) throw new Error("Couldn’t reach the hub. Try again.");
+    members = json["family.members"] ?? [];
+    appMembers = json["family.app_members"] ?? null;
   }
   memberMap = new Map(members.map(m => [m.id, m]));
   if (!HUB_MEMBER && !demoMe) demoMe = members[0] ?? null;
@@ -300,8 +307,11 @@ async function refresh() {
     await loadMembers();
     await loadData();
     error = "";
+    loaded = true;
+    loadFailed = false;
   } catch (e) {
-    error = e.message;
+    if (loaded) error = e.message;
+    else loadFailed = true;
   }
   ready = true;
   render();
@@ -690,6 +700,13 @@ function render() {
     root.innerHTML = `<div class="card empty">Sign in to the hub to use Earn It.</div>`;
     return;
   }
+  if (loadFailed) {
+    root.innerHTML = `
+      <div class="topbar"><h1>${medalBird(34)} Earn It</h1></div>
+      <div class="load-error" data-testid="load-error" role="alert"><span>Couldn’t load your points.</span>
+        <button type="button" class="load-error-retry" data-testid="load-retry">Try again</button></div>`;
+    return;
+  }
   const items = feed();
   root.innerHTML = `
     <div class="topbar">
@@ -845,6 +862,7 @@ function busy(form, label) {
 }
 
 document.addEventListener("click", (event) => {
+  if (event.target.closest('[data-testid="load-retry"]')) { refresh(); return; }
   const target = event.target.closest("[data-action]");
   if (!target) return;
   const id = target.getAttribute("data-id") ?? "";
