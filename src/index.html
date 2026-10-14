@@ -140,6 +140,7 @@ import {
   decisionsByClaim, canDecideDirect, canDecideOpen, canWithdraw,
   activityFeed, pendingPoints, itemStatus, toVerify,
   goalView, maxAllocation, sortGoals, searchableFields,
+  outcomeUnknown, storedDiffers, SAVED_AS_FIRST, failureLine, isDuplicate,
 } from "./logic.js";
 import { firstRenderBatch, namedResults } from "./reads.js";
 import { medalBird, targetBird } from "./art.js";
@@ -323,31 +324,44 @@ async function refresh() {
  *  A write sent from a form passes it: a refused save then leaves the form
  *  open as typed, says so in the form's own error line, and frees its button
  *  to send again. A lost race still closes it, since there is nothing left to
- *  send. */
-async function attempt(fn, conflictMessage, form) {
+ *  send. `words` ({ action, thing }) name the write for failureLine. */
+async function attempt(fn, conflictMessage, form, words) {
   try {
     error = "";
     await fn();
     return true;
   } catch (e) {
     // A lost race (someone decided or withdrew first) is refused by a UNIQUE
-    // index or an unmet requireChanges; anything else is logged and gets the app's own line.
-    const lostRace = conflictMessage && /unique|constraint|stale state/i.test(String(e.message));
+    // index or an unmet requireChanges (a batch's 409); anything else is logged
+    // and gets failureLine's line, decided from the status, never the hub's text.
+    const lostRace = conflictMessage && (e?.status === 409 || isDuplicate(e));
     if (!lostRace) console.error(e);
+    const failed = lostRace ? conflictMessage : failureLine(e, { ...words, found: e?.found });
     const line = !lostRace && form?.isConnected ? form.querySelector("[data-form-error]") : null;
     if (line) {
-      line.textContent = "Couldn’t save — try again.";
+      line.textContent = failed;
       line.hidden = false;
       const button = form.querySelector("button[type=submit]");
       if (button) { button.disabled = false; button.textContent = button.dataset.label ?? button.textContent; }
       return false;
     }
     try { await loadData(); } catch { /* keep what we have */ }
-    error = lostRace ? conflictMessage : "Couldn’t save — try again.";
+    error = failed;
     closeModal();
     render();
     return false;
   }
+}
+
+// A plain `WHERE id = ?` write the hub narrowed answers 200 with nothing
+// changed. Re-read the row so attempt can say "removed" (gone) or the
+// permission line (still there).
+async function mustChange(res, table, id) {
+  if (DEMO || Number(res?.changed ?? 1) !== 0) return;
+  let found = null;
+  try { found = ((await db(`SELECT id FROM ${table} WHERE id = ? LIMIT 1`, [id])).rows?.length ?? 0) > 0; }
+  catch (readErr) { console.error(readErr); }
+  throw Object.assign(new Error("write changed nothing"), { found });
 }
 
 // In the demo there is no hub to write to, so the same change lands in the
@@ -382,37 +396,104 @@ async function rememberChoice(choice) {
   } catch { /* the default is a convenience; the points were already saved */ }
 }
 
+/**
+ * Retry after a lost response: an earn whose first answer was lost may have
+ * been stored in any of the three tables (the verifier choice can change
+ * between tries), so the pinned id is looked up in all three. Returns
+ * `{ mode, row }` for the stored row, or null. A failed read throws.
+ */
+async function findEarned(id) {
+  const [direct, open, entry] = await db.batch([
+    { sql: "SELECT id, member_id, verifier_id, note, points_requested, status, points_granted, decided_at, created_at FROM app_earn_it__direct_claims WHERE id = ?", params: [id] },
+    { sql: "SELECT id, member_id, note, points_requested, visibility, created_at FROM app_earn_it__open_claims WHERE id = ?", params: [id] },
+    { sql: "SELECT id, member_id, points, note, created_at FROM app_earn_it__entries WHERE id = ?", params: [id] },
+  ]);
+  if (direct?.rows?.[0]) return { mode: MODE_PERSON, row: direct.rows[0] };
+  if (open?.rows?.[0]) return { mode: MODE_ANYONE, row: open.rows[0] };
+  if (entry?.rows?.[0]) return { mode: MODE_NONE, row: entry.rows[0] };
+  return null;
+}
+
+/** Unknown outcome: the earn stored under the pinned id, or rethrow `e`. */
+async function landedUnheard(e, id) {
+  if (DEMO || !outcomeUnknown(e)) throw e;
+  let stored = null;
+  try { stored = await findEarned(id); } catch (readErr) {
+    // The id is ours: with the read-back failed, a UNIQUE answer may be this
+    // form's own first try, so nothing is known — "try again", not "already exists".
+    console.error(readErr);
+    throw new Error("create outcome unknown", { cause: e });
+  }
+  if (!stored) throw e;
+  console.error(e);
+  return stored;
+}
+
 async function earn({ note, points, choice }, form) {
   const who = me();
   if (!who) return false;
-  const id = crypto.randomUUID();
+  // The id is the form's, minted on its first send and sent on every retry:
+  // a try whose answer was lost may have stored the claim, and a second press
+  // must find it rather than ask for the points twice.
+  const retry = !!form?.dataset.rowId;
+  const id = form ? (form.dataset.rowId ||= crypto.randomUUID()) : crypto.randomUUID();
+  const choiceKey = choiceValue(choice);
+  const pinnedChoice = form?.dataset.rowChoice ?? choiceKey;
   const stamp = nowIso();
+  let sent = { mode: choice.mode, verifierId: choice.verifierId, points, note };
+  let savedNote = "";
   const ok = await attempt(async () => {
-    if (choice.mode === MODE_PERSON) {
+    // The verifier changed since a try whose answer was lost: that try went to
+    // another table, where this one cannot collide with it. Look first.
+    let landed = null;
+    if (!DEMO && retry && pinnedChoice !== choiceKey) landed = await findEarned(id);
+    if (!landed) {
+      // Remembered only once nothing is left to look for under the old choice.
+      if (form) form.dataset.rowChoice = choiceKey;
+      try {
+        if (choice.mode === MODE_PERSON) {
+          await db("INSERT INTO app_earn_it__direct_claims (id, member_id, verifier_id, note, points_requested, created_at) VALUES (?, ?, ?, ?, ?, ?)", [id, who.id, choice.verifierId, note, points, stamp]);
+        } else if (choice.mode === MODE_ANYONE) {
+          await db("INSERT INTO app_earn_it__open_claims (id, member_id, note, points_requested, visibility, created_at) VALUES (?, ?, ?, ?, 'everyone', ?)", [id, who.id, note, points, stamp]);
+        } else {
+          await db("INSERT INTO app_earn_it__entries (id, member_id, points, note, created_at) VALUES (?, ?, ?, ?, ?)", [id, who.id, points, note, stamp]);
+        }
+      } catch (e) {
+        // Found: an earlier try landed; its success path runs now, once.
+        landed = await landedUnheard(e, id);
+      }
+    }
+    if (landed) {
+      const r = landed.row;
+      const was = { mode: landed.mode, verifierId: r.verifier_id ?? "", points: Number(r.points_requested ?? r.points) || 0, note: r.note ?? "" };
+      // Edited since that first try: what was stored is kept, and said so.
+      if (storedDiffers(was, { mode: choice.mode, verifierId: choice.verifierId ?? "", points, note })) savedNote = SAVED_AS_FIRST;
+      sent = was;
+    }
+    if (form) { delete form.dataset.rowId; delete form.dataset.rowChoice; }
+    if (sent.mode === MODE_PERSON) {
       // status is left to its default: only the verifier may write it.
-      const row = { id, member_id: who.id, verifier_id: choice.verifierId, note, points_requested: points, status: "pending", points_granted: null, decided_at: null, created_at: stamp };
-      await db("INSERT INTO app_earn_it__direct_claims (id, member_id, verifier_id, note, points_requested, created_at) VALUES (?, ?, ?, ?, ?, ?)", [id, who.id, choice.verifierId, note, points, stamp]);
-      directClaims = [row, ...directClaims];
+      const row = landed ? { ...landed.row } : { id, member_id: who.id, verifier_id: choice.verifierId, note, points_requested: points, status: "pending", points_granted: null, decided_at: null, created_at: stamp };
+      directClaims = [row, ...directClaims.filter(c => c.id !== id)];
       demoWrite(s => { s.directClaims = [row, ...s.directClaims]; });
-    } else if (choice.mode === MODE_ANYONE) {
-      const row = { id, member_id: who.id, note, points_requested: points, visibility: "everyone", created_at: stamp };
-      await db("INSERT INTO app_earn_it__open_claims (id, member_id, note, points_requested, visibility, created_at) VALUES (?, ?, ?, ?, 'everyone', ?)", [id, who.id, note, points, stamp]);
-      openClaims = [row, ...openClaims];
+    } else if (sent.mode === MODE_ANYONE) {
+      const row = landed ? { ...landed.row } : { id, member_id: who.id, note, points_requested: points, visibility: "everyone", created_at: stamp };
+      openClaims = [row, ...openClaims.filter(c => c.id !== id)];
       demoWrite(s => { s.openClaims = [row, ...s.openClaims]; });
     } else {
-      const row = { id, member_id: who.id, points, note, created_at: stamp };
-      await db("INSERT INTO app_earn_it__entries (id, member_id, points, note, created_at) VALUES (?, ?, ?, ?, ?)", [id, who.id, points, note, stamp]);
-      entries = [row, ...entries];
-      totals = { ...totals, self: totals.self + points };
+      const row = landed ? { ...landed.row } : { id, member_id: who.id, points, note, created_at: stamp };
+      entries = [row, ...entries.filter(x => x.id !== id)];
+      totals = { ...totals, self: totals.self + sent.points };
       demoWrite(s => { s.entries = [row, ...s.entries]; });
     }
     closeModal();
+    error = savedNote;
     render();
-  }, undefined, form);
+  }, undefined, form, { action: "save the points", thing: "claim" });
   if (!ok) return false;
-  const ask = `${who.name} asks for ${formatPoints(points)}: ${note}`;
-  if (choice.mode === MODE_PERSON) notify({ title: "Points to verify", body: ask, audience: [choice.verifierId] });
-  if (choice.mode === MODE_ANYONE) {
+  const ask = `${who.name} asks for ${formatPoints(sent.points)}: ${sent.note}`;
+  if (sent.mode === MODE_PERSON) notify({ title: "Points to verify", body: ask, audience: [sent.verifierId] });
+  if (sent.mode === MODE_ANYONE) {
     const audience = choices().map(m => m.id);
     if (audience.length) notify({ title: "Points to verify", body: ask, audience });
   }
@@ -452,7 +533,7 @@ async function decide(kind, id, approve, points, form) {
     }
     closeModal();
     render();
-  }, "That claim was already decided or withdrawn.", form);
+  }, "That claim was already decided or withdrawn.", form, { action: "decide the claim", thing: "claim" });
   if (!ok || !claimant) return;
   notify(approve
     ? { title: "Points verified ✅", body: `${who.name} approved ${formatPoints(granted)}.`, audience: [claimant] }
@@ -468,12 +549,12 @@ async function withdraw(kind, id) {
       directClaims = directClaims.filter(c => c.id !== id);
       demoWrite(s => { s.directClaims = s.directClaims.filter(c => c.id !== id); });
     } else {
-      await db("DELETE FROM app_earn_it__open_claims WHERE id = ?", [id]);
+      await mustChange(await db("DELETE FROM app_earn_it__open_claims WHERE id = ?", [id]), "app_earn_it__open_claims", id);
       openClaims = openClaims.filter(c => c.id !== id);
       demoWrite(s => { s.openClaims = s.openClaims.filter(c => c.id !== id); });
     }
     render();
-  }, "That claim was already decided.");
+  }, "That claim was already decided.", undefined, { action: "withdraw the claim", thing: "claim" });
 }
 
 async function saveGoal(form) {
@@ -494,7 +575,7 @@ async function saveGoal(form) {
       // Lowering the cost can complete a goal; raising it can reopen one.
       const reached = goalView({ cost_points: cost }, goalProgress.get(id)).reached;
       const attainedAt = reached ? (existing?.attained_at || nowIso()) : null;
-      await db("UPDATE app_earn_it__goals SET name = ?, note = ?, cost_points = ?, visibility = ?, attained_at = ? WHERE id = ?", [name, note, cost, visibility, attainedAt, id]);
+      await mustChange(await db("UPDATE app_earn_it__goals SET name = ?, note = ?, cost_points = ?, visibility = ?, attained_at = ? WHERE id = ?", [name, note, cost, visibility, attainedAt, id]), "app_earn_it__goals", id);
       const patch = { name, note, cost_points: cost, visibility, attained_at: attainedAt };
       goals = goals.map(g => (g.id === id ? { ...g, ...patch } : g));
       demoWrite(s => { s.goals = s.goals.map(g => (g.id === id ? { ...g, ...patch } : g)); });
@@ -507,7 +588,7 @@ async function saveGoal(form) {
     }
     closeModal();
     render();
-  }, undefined, form);
+  }, undefined, form, { action: "save the goal", thing: "goal" });
   if (!ok && button) { button.disabled = false; button.textContent = "Save"; }
 }
 
@@ -517,22 +598,47 @@ async function putPoints(goalId, points, form) {
   if (!who || !goal || goal.member_id !== who.id) return;
   const amount = Math.min(points, maxAllocation(viewOf(goal), balance(totals).available));
   if (!amount) return;
-  const row = { id: crypto.randomUUID(), goal_id: goalId, member_id: who.id, points: amount, created_at: nowIso() };
-  const reached = goalView(goal, (goalProgress.get(goalId) ?? 0) + amount).reached;
+  // The id is the form's, minted on its first send and sent on every retry,
+  // so a try whose answer was lost is found rather than spent twice.
+  const id = form ? (form.dataset.rowId ||= crypto.randomUUID()) : crypto.randomUUID();
+  let row = { id, goal_id: goalId, member_id: who.id, points: amount, created_at: nowIso() };
   await attempt(async () => {
-    const statements = [{ sql: "INSERT INTO app_earn_it__allocations (id, goal_id, member_id, points, created_at) VALUES (?, ?, ?, ?, ?)", params: [row.id, row.goal_id, row.member_id, row.points, row.created_at] }];
-    if (reached) statements.push({ sql: "UPDATE app_earn_it__goals SET attained_at = ? WHERE id = ?", params: [row.created_at, goalId] });
-    await db.batch(statements);
-    goalProgress.set(goalId, (goalProgress.get(goalId) ?? 0) + amount);
-    totals = { ...totals, spent: totals.spent + amount };
+    let reached = goalView(goal, (goalProgress.get(goalId) ?? 0) + amount).reached;
+    let savedNote = "";
+    try {
+      const statements = [{ sql: "INSERT INTO app_earn_it__allocations (id, goal_id, member_id, points, created_at) VALUES (?, ?, ?, ?, ?)", params: [row.id, row.goal_id, row.member_id, row.points, row.created_at] }];
+      if (reached) statements.push({ sql: "UPDATE app_earn_it__goals SET attained_at = ? WHERE id = ?", params: [row.created_at, goalId] });
+      await db.batch(statements);
+    } catch (e) {
+      if (DEMO || !outcomeUnknown(e)) throw e;
+      let stored = null;
+      try { stored = (await db("SELECT id, goal_id, member_id, points, created_at FROM app_earn_it__allocations WHERE id = ?", [id])).rows?.[0] ?? null; }
+      catch (readErr) {
+        // The id is ours: with the read-back failed, a UNIQUE answer may be this
+        // form's own first try, so nothing is known — "try again", not "already exists".
+        console.error(readErr);
+        throw new Error("create outcome unknown", { cause: e });
+      }
+      if (!stored) throw e;
+      // Found: an earlier try landed (the batch is all or nothing, so the goal
+      // was marked reached with it if it was); its success path runs now, once.
+      console.error(e);
+      if (storedDiffers(stored, { points: amount })) savedNote = SAVED_AS_FIRST;
+      row = { ...stored, points: Number(stored.points) || 0 };
+      reached = goalView(goal, (goalProgress.get(goalId) ?? 0) + row.points).reached;
+    }
+    if (form) delete form.dataset.rowId;
+    goalProgress.set(goalId, (goalProgress.get(goalId) ?? 0) + row.points);
+    totals = { ...totals, spent: totals.spent + row.points };
     if (reached) goals = goals.map(g => (g.id === goalId ? { ...g, attained_at: row.created_at } : g));
     demoWrite(s => {
       s.allocations = [...s.allocations, row];
       if (reached) s.goals = s.goals.map(g => (g.id === goalId ? { ...g, attained_at: row.created_at } : g));
     });
     closeModal();
+    error = savedNote;
     render();
-  }, undefined, form);
+  }, undefined, form, { action: "put points toward the goal", thing: "goal" });
 }
 
 async function takeBack(goalId) {
@@ -543,10 +649,19 @@ async function takeBack(goalId) {
   const yes = await hubConfirm({ message: `Take ${formatPoints(put)} back from ${goal.name}?`, description: "They return to your balance.", confirmLabel: "Take back" });
   if (!yes) return;
   await attempt(async () => {
-    await db.batch([
-      { sql: "DELETE FROM app_earn_it__allocations WHERE goal_id = ?", params: [goalId] },
-      { sql: "UPDATE app_earn_it__goals SET attained_at = ? WHERE id = ?", params: [null, goalId] },
-    ]);
+    // requireChanges: a goal that is gone (or that this member may no longer
+    // change) rolls the batch back as a 409 instead of reading as taken back.
+    try {
+      await db.batch([
+        { sql: "DELETE FROM app_earn_it__allocations WHERE goal_id = ?", params: [goalId] },
+        { sql: "UPDATE app_earn_it__goals SET attained_at = ? WHERE id = ?", params: [null, goalId], requireChanges: true },
+      ]);
+    } catch (e) {
+      if (DEMO || e?.status !== 409) throw e;
+      console.error(e);
+      // Re-read, as mustChange does: gone is "removed", still there is the permission line.
+      await mustChange({ changed: 0 }, "app_earn_it__goals", goalId);
+    }
     goalProgress.delete(goalId);
     totals = { ...totals, spent: Math.max(0, totals.spent - put) };
     goals = goals.map(g => (g.id === goalId ? { ...g, attained_at: null } : g));
@@ -556,7 +671,7 @@ async function takeBack(goalId) {
     });
     closeModal();
     render();
-  });
+  }, undefined, undefined, { action: "take the points back", thing: "goal" });
 }
 
 async function deleteGoal(goalId) {
@@ -572,7 +687,7 @@ async function deleteGoal(goalId) {
   if (!yes) return;
   await attempt(async () => {
     // The manifest's delete_cascades removes its allocations with it.
-    await db("DELETE FROM app_earn_it__goals WHERE id = ?", [goalId]);
+    await mustChange(await db("DELETE FROM app_earn_it__goals WHERE id = ?", [goalId]), "app_earn_it__goals", goalId);
     goals = goals.filter(g => g.id !== goalId);
     goalProgress.delete(goalId);
     totals = { ...totals, spent: Math.max(0, totals.spent - put) };
@@ -582,7 +697,7 @@ async function deleteGoal(goalId) {
     });
     closeModal();
     render();
-  });
+  }, undefined, undefined, { action: "delete the goal", thing: "goal" });
 }
 
 // --- Rendering ---------------------------------------------------------------
