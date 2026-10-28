@@ -12,7 +12,7 @@
 --                 'person' -> claims go to verifier_id only (direct_claims)
 --                 'anyone' -> claims are open to everyone (open_claims)
 CREATE TABLE IF NOT EXISTS app_earn_it__prefs (
-  member_id     TEXT PRIMARY KEY,
+  member_id     TEXT NOT NULL PRIMARY KEY,
   verifier_mode TEXT NOT NULL DEFAULT 'none',
   verifier_id   TEXT,
   updated_at    TEXT NOT NULL
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS app_earn_it__prefs (
 
 -- Self-logged points. Private to the member who logged them.
 CREATE TABLE IF NOT EXISTS app_earn_it__entries (
-  id         TEXT PRIMARY KEY,
+  id         TEXT NOT NULL PRIMARY KEY,
   member_id  TEXT NOT NULL,
   points     INTEGER NOT NULL CHECK (points > 0),
   note       TEXT NOT NULL DEFAULT '',
@@ -37,7 +37,7 @@ CREATE INDEX IF NOT EXISTS app_earn_it__entries_member_idx
 -- addressed to themselves stays recognisable (verifier_id = member_id) and the
 -- app counts it as self-logged, never as verified.
 CREATE TABLE IF NOT EXISTS app_earn_it__direct_claims (
-  id               TEXT PRIMARY KEY,
+  id               TEXT NOT NULL PRIMARY KEY,
   member_id        TEXT NOT NULL,
   verifier_id      TEXT NOT NULL,
   note             TEXT NOT NULL DEFAULT '',
@@ -60,7 +60,7 @@ CREATE INDEX IF NOT EXISTS app_earn_it__direct_claims_verifier_idx
 -- `visibility` is always 'everyone'; the column exists because the row policy
 -- reads it.
 CREATE TABLE IF NOT EXISTS app_earn_it__open_claims (
-  id               TEXT PRIMARY KEY,
+  id               TEXT NOT NULL PRIMARY KEY,
   member_id        TEXT NOT NULL,
   note             TEXT NOT NULL DEFAULT '',
   points_requested INTEGER NOT NULL CHECK (points_requested > 0),
@@ -78,7 +78,7 @@ CREATE INDEX IF NOT EXISTS app_earn_it__open_claims_member_idx
 -- recognisable (decided_by = member_id) and the app shows it as self-logged.
 -- Whoever made a decision may delete it, which takes the points back.
 CREATE TABLE IF NOT EXISTS app_earn_it__open_decisions (
-  id             TEXT PRIMARY KEY,
+  id             TEXT NOT NULL PRIMARY KEY,
   claim_id       TEXT NOT NULL,
   member_id      TEXT NOT NULL,
   decided_by     TEXT NOT NULL,
@@ -93,7 +93,7 @@ CREATE INDEX IF NOT EXISTS app_earn_it__open_decisions_member_idx
 
 -- What a member is saving toward. Private unless they share it.
 CREATE TABLE IF NOT EXISTS app_earn_it__goals (
-  id          TEXT PRIMARY KEY,
+  id          TEXT NOT NULL PRIMARY KEY,
   member_id   TEXT NOT NULL,
   name        TEXT NOT NULL,
   note        TEXT NOT NULL DEFAULT '',
@@ -110,7 +110,7 @@ CREATE INDEX IF NOT EXISTS app_earn_it__goals_member_idx
 -- Points earmarked for a goal. Deleting a goal deletes its allocations
 -- (manifest `delete_cascades`), which returns the points to the balance.
 CREATE TABLE IF NOT EXISTS app_earn_it__allocations (
-  id         TEXT PRIMARY KEY,
+  id         TEXT NOT NULL PRIMARY KEY,
   goal_id    TEXT NOT NULL,
   member_id  TEXT NOT NULL,
   points     INTEGER NOT NULL CHECK (points > 0),
@@ -126,7 +126,7 @@ CREATE INDEX IF NOT EXISTS app_earn_it__allocations_member_idx
 -- task). Written only by the hub; the dispatcher reads `source_event_id`
 -- before it runs, so a retried event is not paid twice.
 CREATE TABLE IF NOT EXISTS app_earn_it__auto_awards (
-  id              TEXT PRIMARY KEY,
+  id              TEXT NOT NULL PRIMARY KEY,
   member_id       TEXT NOT NULL,
   points          INTEGER NOT NULL CHECK (points > 0),
   note            TEXT NOT NULL DEFAULT '',
